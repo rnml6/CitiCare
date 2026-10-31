@@ -379,7 +379,7 @@ const Login = () => {
               You may exercise your rights as a data subject under applicable privacy laws by contacting the barangay office or the appropriate data protection officer.
             </p>
           </section>
-          <label className='mt-2 flex items-start gap-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-white/90 sm:text-sm'>
+          <label className='mt-2 mb-3 flex items-start gap-3 border-t border-white/10 pt-3 pb-3 text-xs leading-relaxed text-white/90 sm:text-sm'>
             <input
               type='checkbox'
               checked={privacyAccepted}
