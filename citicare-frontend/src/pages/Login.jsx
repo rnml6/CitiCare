@@ -39,7 +39,7 @@ const Login = () => {
 
   return (
     <div
-      className='min-h-screen flex items-center justify-center relative p-3 sm:p-10 overflow-hidden'
+      className='h-[100dvh] min-h-[100dvh] w-full flex items-center justify-center relative px-6 py-3 sm:p-10 overflow-hidden'
      
     >
       {/* Blue overlay */}
@@ -99,14 +99,14 @@ const Login = () => {
 
       {/* Form View */}
       <div
-        className={`transition-all duration-500 ease-in-out ${
+        className={`w-full transition-all duration-500 ease-in-out ${
           showForm
             ? 'opacity-100 scale-100'
             : 'opacity-0 scale-95 pointer-events-none'
         }`}
         style={{ zIndex: showForm ? 10 : 8 }}
       >
-        <div className='relative w-full max-w-[480px] mx-auto p-4 sm:p-7 pt-8 sm:pt-12 rounded-3xl bg-white/[0.09] border border-white/30 shadow-[0_25px_55px_rgba(2,21,41,0.45),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl text-white'>
+        <div className='relative w-full max-w-[480px] mx-auto px-6 py-4 sm:p-7 pt-8 sm:pt-12 rounded-3xl bg-white/[0.09] border border-white/30 shadow-[0_25px_55px_rgba(2,21,41,0.45),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl text-white'>
           <button
             onClick={() => setShowForm(false)}
             className='absolute top-4 right-4 w-[27px] h-[27px] bg-white/10 border border-white/20 rounded-full text-white/75 p-1.5 flex items-center justify-center hover:bg-white/20 transition-colors'
@@ -253,15 +253,6 @@ const Login = () => {
                 </button>
               </div>
             </label>
-
-            {sessionExpired && (
-              <p
-                role='status'
-                className='text-[13px] sm:text-[14px] text-sky-100 bg-sky-500/15 border border-sky-400/30 rounded-xl p-3 sm:p-4'
-              >
-                Your session expired due to inactivity. Please sign in again.
-              </p>
-            )}
 
             {error && (
               <p className='text-[13px] sm:text-[14px] text-red-200 bg-red-500/20 border border-red-400/30 rounded-xl p-3 sm:p-4 animate-[shake_0.4s_both]'>

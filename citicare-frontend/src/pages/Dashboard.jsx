@@ -1007,26 +1007,26 @@ const Dashboard = () => {
                                 {p.riskLevel || 'Low'}
                               </span>
                             </div>
-                            <div className='flex flex-wrap gap-1.5 mt-1.5'>
-                              <span className='inline-flex items-center gap-1.5 text-[11px] text-white/75 bg-white/[0.05] border border-white/10 rounded-full px-2 py-0.5'>
-                                <span className='w-1.5 h-1.5 rounded-full bg-red-400' />
-                                {p.critical || 0} Critical
+                            <div className='flex flex-wrap items-center gap-1.5 mt-1.5'>
+                              <span aria-label={`${p.critical || 0} critical`} className='inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/[0.05] border border-white/10 rounded-full px-2.5 py-1'>
+                                <span className='w-2 h-2 rounded-full bg-red-400' />
+                                {p.critical || 0}
                               </span>
-                              <span className='inline-flex items-center gap-1.5 text-[11px] text-white/75 bg-white/[0.05] border border-white/10 rounded-full px-2 py-0.5'>
-                                <span className='w-1.5 h-1.5 rounded-full bg-orange-400' />
-                                {p.high || 0} High
+                              <span aria-label={`${p.high || 0} high`} className='inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/[0.05] border border-white/10 rounded-full px-2.5 py-1'>
+                                <span className='w-2 h-2 rounded-full bg-orange-400' />
+                                {p.high || 0}
                               </span>
-                              <span className='inline-flex items-center gap-1.5 text-[11px] text-white/75 bg-white/[0.05] border border-white/10 rounded-full px-2 py-0.5'>
-                                <span className='w-1.5 h-1.5 rounded-full bg-yellow-400' />
-                                {p.moderate || 0} Moderate
+                              <span aria-label={`${p.moderate || 0} moderate`} className='inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/[0.05] border border-white/10 rounded-full px-2.5 py-1'>
+                                <span className='w-2 h-2 rounded-full bg-yellow-400' />
+                                {p.moderate || 0}
                               </span>
-                              <span className='inline-flex items-center gap-1.5 text-[11px] text-white/75 bg-white/[0.05] border border-white/10 rounded-full px-2 py-0.5'>
-                                <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-                                {p.low || 0} Low
+                              <span aria-label={`${p.low || 0} low`} className='inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/[0.05] border border-white/10 rounded-full px-2.5 py-1'>
+                                <span className='w-2 h-2 rounded-full bg-emerald-400' />
+                                {p.low || 0}
                               </span>
+                              <ChevronRight className='w-4 h-4 text-white/40 shrink-0 ml-auto' />
                             </div>
                           </div>
-                          <ChevronRight className='w-4 h-4 text-white/40 shrink-0' />
                         </div>
                       </div>
                     )
