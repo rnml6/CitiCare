@@ -379,14 +379,14 @@ const Login = () => {
               You may exercise your rights as a data subject under applicable privacy laws by contacting the barangay office or the appropriate data protection officer.
             </p>
           </section>
-          <label className='mt-2 mb-3 flex items-center gap-2 whitespace-nowrap border-t border-white/10 pt-3 pb-3 text-[13px] leading-tight text-white/90 sm:text-sm'>
+          <label className='mt-2 mb-3 flex items-center gap-2 whitespace-nowrap border-t border-white/10 pt-3 pb-3 text-sm leading-relaxed text-white/90'>
             <input
               type='checkbox'
               checked={privacyAccepted}
               onChange={event => setPrivacyAccepted(event.target.checked)}
               className='privacy-policy-checkbox h-5 w-5 shrink-0'
             />
-            <span className='min-w-0'>By checking this box, I agree to the Privacy Policy.</span>
+            <span className='min-w-0'>I acknowledge the Privacy Policy.</span>
           </label>
         </div>
       </Modal>
