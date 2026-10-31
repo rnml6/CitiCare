@@ -1,5 +1,5 @@
 // pages/Login.jsx
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from '../assets/logo.png'
@@ -13,6 +13,46 @@ const Login = () => {
   const [showForm, setShowForm] = useState(false)
   const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const scrollY = window.scrollY
+    const htmlStyle = document.documentElement.style
+    const bodyStyle = document.body.style
+    const previous = {
+      htmlOverflow: htmlStyle.overflow,
+      htmlOverscroll: htmlStyle.overscrollBehavior,
+      bodyPosition: bodyStyle.position,
+      bodyTop: bodyStyle.top,
+      bodyLeft: bodyStyle.left,
+      bodyRight: bodyStyle.right,
+      bodyWidth: bodyStyle.width,
+      bodyOverflow: bodyStyle.overflow,
+      bodyOverscroll: bodyStyle.overscrollBehavior
+    }
+
+    htmlStyle.overflow = 'hidden'
+    htmlStyle.overscrollBehavior = 'none'
+    bodyStyle.position = 'fixed'
+    bodyStyle.top = `-${scrollY}px`
+    bodyStyle.left = '0'
+    bodyStyle.right = '0'
+    bodyStyle.width = '100%'
+    bodyStyle.overflow = 'hidden'
+    bodyStyle.overscrollBehavior = 'none'
+
+    return () => {
+      htmlStyle.overflow = previous.htmlOverflow
+      htmlStyle.overscrollBehavior = previous.htmlOverscroll
+      bodyStyle.position = previous.bodyPosition
+      bodyStyle.top = previous.bodyTop
+      bodyStyle.left = previous.bodyLeft
+      bodyStyle.right = previous.bodyRight
+      bodyStyle.width = previous.bodyWidth
+      bodyStyle.overflow = previous.bodyOverflow
+      bodyStyle.overscrollBehavior = previous.bodyOverscroll
+      window.scrollTo(0, scrollY)
+    }
+  }, [])
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -39,7 +79,7 @@ const Login = () => {
 
   return (
     <div
-      className='h-[100dvh] min-h-[100dvh] w-full flex items-center justify-center relative px-6 py-3 sm:p-10 overflow-hidden'
+      className='fixed inset-0 h-[100dvh] min-h-0 w-full flex items-center justify-center px-6 py-3 sm:p-10 overflow-hidden overscroll-none'
      
     >
       {/* Blue overlay */}
