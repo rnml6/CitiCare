@@ -309,7 +309,7 @@ const Login = () => {
               </div>
             </label>
 
-            <label className='-mt-1 flex items-center gap-2.5 pl-2 text-xs sm:text-sm text-white/80 leading-snug'>
+            <label className='mt-1 flex items-center gap-2.5 pl-2 text-xs sm:text-sm text-white/80 leading-snug'>
               <input
                 type='checkbox'
                 checked={privacyAccepted}
