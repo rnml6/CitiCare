@@ -100,6 +100,21 @@ const getAIPriorityCard = level => {
   }[key] || 'border-white/10 bg-white/[0.04]'
 }
 
+const RiskDistributionTooltip = ({ active, payload }) => {
+  const item = payload?.[0]?.payload
+  if (!active || !item) return null
+
+  return (
+    <div className='max-w-[190px] rounded-xl border border-white/20 bg-[#0f1535]/95 px-3 py-2 text-sm text-white shadow-lg'>
+      <div className='flex items-center gap-2 font-medium'>
+        <span className='h-2.5 w-2.5 shrink-0 rounded-full' style={{ backgroundColor: item.color }} />
+        <span>{item.name} risk</span>
+      </div>
+      <p className='mt-1 pl-[18px] text-white/90'>Count: {Number(item.value || 0).toLocaleString()}</p>
+    </div>
+  )
+}
+
 const Dashboard = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -739,14 +754,14 @@ const Dashboard = () => {
 
       <div className='grid grid-cols-1 gap-5 sm:gap-6'>
        <GlassCard hover={false}>
-         <div className='flex items-center justify-between mb-2.5 gap-3 flex-wrap'>
-          <h2 className='text-base sm:text-lg font-semibold text-white'>
+          <div className='flex items-center justify-between mb-2.5 gap-2 sm:gap-3 flex-nowrap'>
+           <h2 className='text-base sm:text-lg font-semibold text-white whitespace-nowrap'>
             {activityView === 'today' ? "Today's Activities" : 'Upcoming Activities'}
           </h2>
           <div className='flex rounded-lg border border-white/15 overflow-hidden'>
             <button
               onClick={() => handleActivityViewChange('today')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-medium transition-colors ${
                 activityView === 'today'
                   ? 'bg-blue-500/30 text-white'
                   : 'text-white/65 hover:bg-white/10'
@@ -756,7 +771,7 @@ const Dashboard = () => {
             </button>
             <button
               onClick={() => handleActivityViewChange('upcoming')}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-1.5 text-xs font-medium transition-colors ${
                 activityView === 'upcoming'
                   ? 'bg-blue-500/30 text-white'
                   : 'text-white/65 hover:bg-white/10'
@@ -904,21 +919,23 @@ const Dashboard = () => {
           </GlassCard>
           <GlassCard hover={false} className='min-w-[88%] snap-start'>
             <h2 className='text-base font-semibold text-white mb-3'>Overall Risk Distribution</h2>
-            <div className='h-60'>
+            <div className='h-60 dashboard-risk-distribution-chart'>
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={riskDistribution} cx='50%' cy='50%' innerRadius={45} outerRadius={78} paddingAngle={5} dataKey='value'>
                     {riskDistribution.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: 'rgba(15,21,53,0.95)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '12px',
-                      color: 'white'
+                  <Tooltip content={<RiskDistributionTooltip />} />
+                  <Legend
+                    iconType='circle'
+                    layout='horizontal'
+                    wrapperStyle={{
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: '10px',
+                      width: '100%',
+                      left: 0
                     }}
                   />
-                  <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.9)', fontSize: '11px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -936,33 +953,35 @@ const Dashboard = () => {
         >
       {!isBHWWorker && (
        <GlassCard hover={false}>
-          <div className='flex items-center justify-between mb-4 gap-3 flex-wrap'>
-            <h2 className='text-base sm:text-lg font-semibold text-white'>
+          <div className='flex items-center justify-between mb-4 gap-2 sm:gap-3 flex-nowrap'>
+            <h2 className='text-base sm:text-lg font-semibold text-white whitespace-nowrap'>
               {purokView === 'map' ? 'Purok Risk Map' : 'Priority Puroks'}
             </h2>
             <div className='flex rounded-lg border border-white/15 overflow-hidden'>
               <button
                 onClick={() => setPurokView('map')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-1.5 text-xs font-medium transition-colors ${
                   purokView === 'map'
                     ? 'bg-blue-500/30 text-white'
                     : 'text-white/65 hover:bg-white/10'
                 }`}
               >
-                Risk Map
+                <span className='sm:hidden'>Map</span>
+                <span className='hidden sm:inline'>Risk Map</span>
               </button>
               <button
                 onClick={() => {
                   setPurokView('priority')
                   setPriorityPage(1)
                 }}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-1.5 text-xs font-medium transition-colors ${
                   purokView === 'priority'
                     ? 'bg-blue-500/30 text-white'
                     : 'text-white/65 hover:bg-white/10'
                 }`}
               >
-                Priority Puroks
+                <span className='sm:hidden'>Priority Puroks</span>
+                <span className='hidden sm:inline'>Priority Puroks</span>
               </button>
             </div>
           </div>
@@ -1126,8 +1145,8 @@ const Dashboard = () => {
               AI Health Recommendations
             </h2>
           </div>
-          <div className='flex items-center gap-2'>
-            <div className='flex bg-white/10 rounded-lg p-0.5 border border-white/20'>
+          <div className='flex items-center gap-2 w-full sm:w-auto'>
+            <div className='flex w-full sm:w-auto bg-white/10 rounded-lg p-0.5 border border-white/20'>
               {['monthly', 'quarterly', 'annual'].map(p => (
                 <button
                   key={p}
@@ -1135,7 +1154,7 @@ const Dashboard = () => {
                     setAiPeriod(p)
                     fetchAIRecommendation(p)
                   }}
-                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm transition-all ${
+                  className={`flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm transition-all ${
                     aiPeriod === p
                       ? 'bg-blue-500/30 text-blue-100 font-medium'
                       : 'text-white/75 hover:text-white'
@@ -1491,7 +1510,7 @@ const Dashboard = () => {
          <h2 className='text-base sm:text-lg font-semibold text-white mb-4'>
           Overall Risk Distribution
         </h2>
-        <div className='h-64'>
+        <div className='h-64 dashboard-risk-distribution-chart'>
           <ResponsiveContainer>
             <PieChart>
               <Pie
@@ -1507,18 +1526,15 @@ const Dashboard = () => {
                   <Cell key={i} fill={e.color} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: 'rgba(15,21,53,0.95)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '12px',
-                  color: 'white'
-                }}
-              />
+              <Tooltip content={<RiskDistributionTooltip />} />
               <Legend
+                iconType='circle'
+                layout='horizontal'
                 wrapperStyle={{
                   color: 'rgba(255,255,255,0.9)',
-                  fontSize: '12px'
+                  fontSize: '12px',
+                  width: '100%',
+                  left: 0
                 }}
               />
             </PieChart>

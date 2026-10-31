@@ -32,6 +32,37 @@
 }
 
 @layer components {
+  .dashboard-risk-distribution-chart .recharts-legend-wrapper ul {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
+
+  .dashboard-risk-distribution-chart .recharts-legend-item {
+    margin-right: 0 !important;
+  }
+
+  .dashboard-risk-distribution-chart .recharts-pie:focus,
+  .dashboard-risk-distribution-chart .recharts-pie:focus-visible,
+  .dashboard-risk-distribution-chart .recharts-sector:focus,
+  .dashboard-risk-distribution-chart .recharts-sector:focus-visible {
+    outline: none;
+  }
+
+  @media (max-width: 640px) {
+    .dashboard-risk-distribution-chart .recharts-legend-wrapper {
+      font-size: 10px !important;
+    }
+
+    .dashboard-risk-distribution-chart .recharts-legend-item svg {
+      width: 10px;
+      height: 10px;
+      margin-right: 2px !important;
+    }
+  }
+
   /* ---- Surfaces ---- */
   .glass {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.05));
