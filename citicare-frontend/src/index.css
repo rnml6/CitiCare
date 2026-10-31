@@ -1,0 +1,1058 @@
+/* index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    font-family: 'Sora', sans-serif;
+  }
+
+  body {
+    @apply min-h-screen text-white antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;
+    line-height: 1.55;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  ::selection {
+    background: rgba(96, 165, 250, 0.35);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(96, 165, 250, 0.6);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* ---- Surfaces ---- */
+  .glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.05));
+    @apply backdrop-blur-xl border border-white/10 shadow-lg shadow-black/20;
+  }
+
+  .glass-hover {
+    @apply hover:bg-white/[0.09] hover:border-white/20 transition-all duration-200 hover:shadow-xl hover:shadow-black/25;
+  }
+
+  .glass-card {
+    @apply glass rounded-2xl p-4 sm:p-6;
+  }
+
+  /* ---- Inputs ---- */
+  .glass-input {
+    @apply bg-white/[0.06] border border-white/15 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-2.5 text-sm sm:text-base text-white font-medium placeholder-white/40
+           focus:outline-none focus:border-blue-400/70 focus:ring-2 focus:ring-blue-400/20 focus:bg-white/[0.08]
+           transition-all duration-200 w-full;
+  }
+
+  .glass-select {
+    @apply glass-input appearance-none cursor-pointer bg-no-repeat;
+    color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.6rem center;
+    background-size: 1.4em 1.4em;
+    padding-right: 2.75rem;
+  }
+
+  /* Dropdown list (open options panel) - themed to match the glass UI */
+  .glass-select option,
+  .glass-select optgroup {
+    background-color: #101531;
+    color: #eef2ff;
+    font-family: 'Sora', sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .glass-select option:hover {
+    background-color: #274b7d;
+    color: #ffffff;
+  }
+  .glass-select option:checked,
+  .glass-select option:active {
+    background-color: #33578f;
+    color: #ffffff;
+  }
+  .glass-select optgroup {
+    background-color: #0c1029;
+    color: #84b2e2;
+    font-style: normal;
+    font-weight: 600;
+  }
+  .glass-select optgroup option {
+    color: #eef2ff;
+  }
+
+  .glass-textarea {
+    @apply glass-input resize-none;
+  }
+
+  /* ---- Buttons ---- */
+  .glass-btn {
+    @apply px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
+           hover:brightness-110 active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:hover:brightness-100 disabled:active:scale-100 focus:outline-none focus:ring-2 focus:ring-blue-400/50;
+  }
+
+  .glass-btn-lg {
+    @apply glass-btn px-5 py-4 text-base font-medium;
+  }
+
+  .glass-btn-primary {
+    @apply glass-btn text-white border border-primary-400/40 shadow-lg shadow-primary-500/25;
+    background-image: linear-gradient(180deg, from-primary-400 via-primary-500/90 to-primary-600/90);
+  }
+  .glass-btn-primary:hover {
+    background-image: linear-gradient(180deg, from-primary-400 via-primary-500 to-primary-600);
+  }
+
+  .glass-btn-solid-primary {
+    @apply glass-btn text-white bg-primary-600 hover:bg-primary-500 active:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50;
+  }
+  .glass-btn-solid-secondary {
+    @apply glass-btn text-white bg-gray-700 hover:bg-gray-600 active:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50;
+  }
+  .glass-btn-solid-danger {
+    @apply glass-btn text-white bg-red-700 hover:bg-red-600 active:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50;
+  }
+  .glass-btn-solid-success {
+    @apply glass-btn text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50;
+  }
+
+  .glass-btn-secondary {
+    @apply glass-btn bg-gray-800/10 hover:bg-gray-700/15 text-white border border-white/15;
+  }
+
+  .glass-btn-danger {
+    @apply glass-btn text-white border border-red-400/40 shadow-lg shadow-red-500/25;
+    background-image: linear-gradient(180deg, from-red-400 via-red-500/90 to-red-600/90);
+  }
+
+  .glass-btn-success {
+    @apply glass-btn text-white border border-emerald-400/40 shadow-lg shadow-emerald-500/25;
+    background-image: linear-gradient(180deg, from-emerald-400 via-emerald-500/90 to-emerald-600/90);
+  }
+
+  /* ---- Stat cards ---- */
+  .stat-card {
+    @apply glass-card flex items-center space-x-4 cursor-pointer glass-hover;
+  }
+
+  /* ---- Sidebar ---- */
+  .sidebar-link {
+    @apply relative flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white
+           hover:bg-white/[0.06] transition-all duration-200 cursor-pointer;
+  }
+
+  .sidebar-link.active {
+    @apply bg-blue-500/15 text-blue-200 border border-blue-400/25 shadow-md shadow-blue-500/10;
+  }
+
+  .sidebar-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #60a5fa, #2563eb);
+  }
+
+  /* ---- Badges ---- */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap;
+  }
+
+  .badge-critical { @apply text-red-300 bg-red-500/15 border-red-400/30; }
+  .badge-high { @apply text-orange-300 bg-orange-500/15 border-orange-400/30; }
+  .badge-moderate { @apply text-yellow-300 bg-yellow-500/15 border-yellow-400/30; }
+  .badge-low { @apply text-emerald-300 bg-emerald-500/15 border-emerald-400/30; }
+  .badge-active { @apply text-emerald-300 bg-emerald-500/15 border-emerald-400/30; }
+  .badge-inactive { @apply text-white/70 bg-white/10 border-white/20; }
+  .badge-completed { @apply text-emerald-300 bg-emerald-500/15 border-emerald-400/30; }
+  .badge-scheduled { @apply text-blue-300 bg-blue-500/15 border-blue-400/30; }
+  .badge-missed { @apply text-red-300 bg-red-500/15 border-red-400/30; }
+
+  /* ---- Tables ---- */
+  .glass-table {
+    @apply w-full border-collapse;
+  }
+
+  .glass-table thead th {
+    @apply text-left text-[11px] sm:text-xs uppercase tracking-wider text-white/55 font-semibold px-2 sm:px-4 py-2.5 sm:py-3 border-b border-white/15 whitespace-nowrap;
+  }
+
+  .glass-table tbody td {
+    @apply px-2 sm:px-4 py-2.5 sm:py-3.5 border-b border-white/[0.06] text-sm;
+  }
+
+  .glass-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .glass-table tbody tr {
+    @apply transition-colors duration-150;
+  }
+
+  .glass-table tbody tr:hover {
+    @apply bg-white/[0.04];
+  }
+}
+
+/* Scrollbars hidden for consistent dark UI */
+* {
+  scrollbar-width: none;
+  -ms-scrollbar-width: none; /* IE 10 */
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  display: none;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Chart legend & axis text must stay readable on dark backgrounds */
+.recharts-legend-item-text {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.recharts-default-legend {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.recharts-text {
+  fill: rgba(255, 255, 255, 0.8);
+}
+
+/* Leaflet map: remove focus/click outline boxes on dark UI */
+.leaflet-container,
+.leaflet-container:focus,
+.leaflet-container *:focus {
+  outline: none !important;
+}
+.leaflet-container.cursor-crosshair {
+  cursor: crosshair;
+}
+.leaflet-tooltip {
+  background: rgba(10, 15, 40, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.leaflet-tooltip-top::before {
+  border-top-color: rgba(10, 15, 40, 0.92);
+}
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: rgba(10, 15, 40, 0.92);
+}
+
+/* Purok pin: risk-colored dot + epicenter wave rings */
+.gumamela-pin {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+}
+.gumamela-pin .dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+.gumamela-pin .pin-wave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: transparent;
+  opacity: 0;
+  animation: pinPulse 1.8s ease-out infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+.gumamela-pin .pin-wave.two {
+  animation-delay: 0.6s;
+}
+@keyframes pinPulse {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.6;
+  }
+  80% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Placement preview: shows exactly where the pin will land under the cursor */
+.pin-preview {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+}
+.pin-preview-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 14px rgba(0, 0, 0, 0.5);
+  background: transparent;
+}
+.pin-preview-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.bg-animated {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bg-animated::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(95, 150, 211, 0.14) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(121, 184, 214, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(95, 150, 211, 0.09) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(74, 122, 187, 0.09) 0%, transparent 50%);
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Animated gumamela background - slides left and right */
+.bg-pan {
+  position: absolute;
+  top: 0;
+  left: -12.5%;
+  width: 125%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: bgPan 24s ease-in-out infinite alternate;
+}
+
+@keyframes bgPan {
+  from { transform: translateX(0); }
+  to { transform: translateX(-10%); }
+}
+
+/* ============================================ */
+/* LOGIN PAGE STYLES */
+/* ============================================ */
+.login-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 40px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.login-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 130%;
+  height: 100%;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+  animation: slideBackground 20s linear infinite alternate;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-screen::before {
+    animation: none;
+    width: 100%;
+  }
+  .mobile-reveal-btn {
+    animation: elementSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.4s !important;
+  }
+}
+
+.login-screen__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(29, 45, 71, 0.85) 5%, rgba(53, 82, 127, 0.75) 50%, rgba(132, 178, 226, 0.22) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1;
+}
+
+/* Login Keyframes */
+@keyframes slideBackground {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-10%, 0, 0); }
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cardEntrance {
+  0% { opacity: 0; transform: translateY(15px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cardFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-8px); }
+}
+
+@keyframes elementSlideUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes errorShake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+  40%, 60% { transform: translate3d(3px, 0, 0); }
+}
+
+@keyframes buttonPulse {
+  0% { box-shadow: 0 8px 24px rgba(95, 150, 211, 0.35), 0 0 0 0 rgba(132, 178, 226, 0.35); }
+  70% { box-shadow: 0 8px 24px rgba(95, 150, 211, 0.35), 0 0 0 16px rgba(132, 178, 226, 0); }
+  100% { box-shadow: 0 8px 24px rgba(95, 150, 211, 0.35), 0 0 0 0 rgba(132, 178, 226, 0); }
+}
+
+/* Skeleton shimmer — base block + moving highlight sweep.
+   Respects prefers-reduced-motion by falling back to a static block. */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.075) 15%, rgba(255, 255, 255, 0.14) 50%, rgba(255, 255, 255, 0.075) 85%);
+  animation: skeletonPulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  animation: skeletonSweep 1.6s ease-in-out infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes skeletonSweep {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .skeleton-shimmer::after {
+    animation: none;
+  }
+}
+
+/* Narrow screens: keep shared surfaces usable without changing desktop sizing. */
+@media (max-width: 639px) {
+  /* Keep fixed-width skeleton bars from forcing horizontal overflow on phones,
+     while allowing flex/grid layouts to compress naturally. */
+  .responsive-main .skeleton-shimmer {
+    max-width: 100%;
+  }
+
+  .responsive-main .skeleton-shimmer.flex-1 {
+    min-width: 0;
+  }
+
+  .responsive-main .glass-card .skeleton-shimmer {
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+
+  .responsive-main {
+    padding: 0.875rem 0.75rem 6.5rem;
+  }
+
+  .responsive-main > div {
+    width: 100%;
+  }
+
+  header.glass {
+    padding: 0.75rem;
+    padding-inline: 0.75rem !important;
+    padding-left: 1rem !important;
+    padding-top: 1rem !important;
+  }
+
+  header.glass h2 {
+    font-size: 1rem;
+  }
+
+  header.glass button {
+    min-width: 2.625rem;
+    min-height: 2.625rem;
+  }
+
+  .responsive-header-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0.625rem !important;
+  }
+
+  .responsive-header-actions button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .responsive-header-actions {
+    column-gap: 0.25rem;
+  }
+
+  .responsive-header-actions > * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .responsive-header-actions > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0;
+  }
+
+  .responsive-header-actions .responsive-signout {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .responsive-main .glass-card {
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  .responsive-main .stat-card {
+    gap: 0;
+    padding: 0.875rem;
+    min-height: 4.5rem;
+    min-width: 0;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  /* Only the Dashboard stat strip scrolls sideways; stat cards used in
+     grids (worker pages) must be free to shrink to their column width. */
+  .responsive-main .dashboard-stat-scroll .stat-card {
+    flex: 0 0 max-content;
+  }
+
+  .responsive-main .dashboard-stat-scroll .stat-card > div:last-child {
+    min-width: max-content;
+  }
+
+  .responsive-main .dashboard-stat-scroll .stat-card p:first-child {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  /* Two-column stat grids at 320px: tighten the card chrome so the label
+     does not have to truncate. */
+  .responsive-main .grid > .stat-card {
+    padding: 0.75rem;
+  }
+
+  .responsive-main .grid > .stat-card p:first-child {
+    font-size: 0.625rem;
+    letter-spacing: 0.03em;
+  }
+
+  .responsive-main .stat-card > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0.625rem;
+  }
+
+  .responsive-main .stat-card > div:last-child {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  .responsive-main .stat-card p:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+    letter-spacing: 0.04em;
+  }
+
+  .responsive-main .dashboard-stat-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.75) rgba(255, 255, 255, 0.08);
+  }
+
+  .responsive-main .dashboard-stat-scroll::-webkit-scrollbar {
+    display: block;
+    height: 0.375rem;
+  }
+
+  .responsive-main .dashboard-stat-scroll::-webkit-scrollbar-track {
+    display: block;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 9999px;
+  }
+
+  .responsive-main .dashboard-stat-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.75);
+    border-radius: 9999px;
+  }
+
+  .responsive-main .dashboard-stat-scroll {
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .responsive-main .dashboard-stat-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .responsive-main .dashboard-stat-scroll-indicator {
+    position: relative;
+    height: 0.375rem;
+    margin-top: 0.25rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .responsive-main .dashboard-stat-scroll-indicator span {
+    display: block;
+    position: absolute;
+    top: 0;
+    width: 28%;
+    height: 100%;
+    border-radius: inherit;
+    background: rgba(148, 163, 184, 0.75);
+    will-change: left;
+  }
+
+  .responsive-main .dashboard-priority-pagination > span,
+  .responsive-main .dashboard-priority-pagination button {
+    font-size: 0.6875rem;
+  }
+
+  .responsive-main .dashboard-risk-chart {
+    width: 100%;
+    margin-left: 0;
+    padding-top: 0.5rem;
+  }
+
+  /* BHW-only mobile card (horizontal scroll strip): its chart div has no
+     dashboard-risk-chart class, so target the first card's chart directly. */
+  .responsive-main .snap-x > .glass-card:first-child > div.h-64 {
+    width: calc(100% + 2rem);
+    margin-left: -2rem;
+  }
+
+  .responsive-main .dashboard-risk-chart .recharts-legend-wrapper {
+    right: 0 !important;
+    left: auto !important;
+    width: auto !important;
+  }
+
+  .responsive-main .dashboard-risk-chart .recharts-default-legend {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .responsive-main .snap-x > .glass-card:first-child .recharts-legend-wrapper {
+    left: auto !important;
+    right: -2rem !important;
+    width: calc(100% + 2rem) !important;
+    text-align: center;
+  }
+
+  .responsive-main .snap-x > .glass-card:first-child .recharts-default-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .responsive-main .stat-card p:last-child {
+    font-size: 1.25rem;
+    margin-top: 0.125rem;
+  }
+
+  .responsive-main .glass-btn {
+    min-height: 2.625rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .responsive-main .glass-btn-lg {
+    min-height: 2.75rem;
+    padding: 0.6875rem 0.875rem;
+  }
+
+  .responsive-main .glass-input {
+    min-height: 2.625rem;
+  }
+
+  .responsive-main {
+    padding-bottom: 100px;
+  }
+
+  .responsive-main h1 {
+    line-height: 1.2;
+  }
+
+  .responsive-main .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.875rem;
+  }
+
+  .responsive-main .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.125rem;
+  }
+
+  .responsive-main .flex-wrap {
+    row-gap: 0.5rem;
+  }
+
+  .responsive-main .glass-table {
+    font-size: 0.8125rem;
+  }
+
+  .responsive-main .resident-focus-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    font-weight: 600;
+  }
+
+  .medical-history-filters > div {
+    flex: 1 1 0%;
+    min-width: 0;
+    width: 100% !important;
+  }
+
+  .medical-history-filters > div input {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  .resident-detail-actions > button {
+    padding: 0.375rem;
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .resident-detail-actions > button:nth-child(1) svg {
+    color: #34d399;
+  }
+
+  .resident-detail-actions > button:nth-child(2) svg {
+    color: #60a5fa;
+  }
+
+  .resident-detail-actions > button:nth-child(3) svg {
+    color: #f87171;
+  }
+
+  .resident-detail-actions > button svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .resident-risk-summary > span,
+  .resident-risk-summary > button {
+    font-size: 0.875rem;
+  }
+
+  .resident-risk-summary > span {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .resident-risk-summary > button svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .resident-focus-summary > span {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .modal-shell {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .modal-panel {
+    max-height: calc(100dvh - env(safe-area-inset-bottom));
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .modal-panel.resident-add-modal,
+  .modal-panel.health-worker-add-modal,
+  .modal-panel.medicine-form-modal {
+    margin-top: 0;
+    max-height: calc(100dvh - 6rem - env(safe-area-inset-bottom));
+  }
+
+  .modal-panel.resident-add-modal > div:last-child,
+  .modal-panel.health-worker-add-modal > div:last-child,
+  .modal-panel.medicine-form-modal > div:last-child {
+    max-height: calc(100dvh - 10rem - env(safe-area-inset-bottom));
+  }
+
+  .modal-panel.medicine-form-modal form .medicine-mobile-target-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modal-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .modal-header h2 {
+    max-width: calc(100% - 3rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-panel > div:last-child {
+    padding: 0.875rem;
+    max-height: calc(100dvh - 4.25rem - env(safe-area-inset-bottom));
+  }
+
+  .modal-panel form .grid-cols-2,
+  .modal-panel form .grid-cols-3,
+  .modal-panel form [class*="grid-cols-[2fr_1fr_32px]"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+  }
+
+  .modal-panel form .medical-record-date-location-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modal-panel form .medical-record-referral-date-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modal-panel form .medical-vitals-primary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .modal-panel form .medical-vitals-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modal-panel.resident-add-modal form .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .modal-panel.resident-add-modal form > .flex.justify-end {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-direction: initial;
+  }
+
+  .modal-panel form > .flex.justify-end,
+  .modal-panel form > .flex.justify-between {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modal-panel form > .flex.justify-end > button,
+  .modal-panel form > .flex.justify-between > div {
+    width: 100%;
+  }
+
+  .modal-panel form > .flex.justify-end > button,
+  .modal-panel form > .flex.justify-between > div > button {
+    flex: 1;
+  }
+
+  .modal-panel form > .flex.justify-between > div {
+    margin-left: 0;
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .responsive-calendar {
+    min-width: 0;
+  }
+
+  .responsive-calendar > div:first-child {
+    justify-content: center;
+  }
+
+  .responsive-calendar .calendar-weekdays,
+  .responsive-calendar .calendar-grid {
+    min-width: 0;
+    gap: 0.5rem;
+  }
+
+  .responsive-calendar .calendar-scroll {
+    overflow-x: visible;
+  }
+
+  .responsive-calendar .calendar-weekdays > div {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.625rem;
+  }
+
+  .responsive-calendar .calendar-cell,
+  .responsive-calendar .calendar-empty {
+    height: 3.75rem;
+  }
+
+  .responsive-calendar .calendar-cell {
+    padding: 0.375rem;
+  }
+
+  .responsive-calendar .calendar-cell .space-y-px {
+    display: none;
+  }
+
+  .responsive-calendar .calendar-legend {
+    display: none;
+  }
+
+  .responsive-calendar .calendar-cell > div:first-child > span:first-child {
+    font-size: 0.75rem;
+  }
+
+  .responsive-calendar .calendar-cell > div:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    margin-bottom: 0;
+  }
+
+  .responsive-calendar .calendar-cell-no-schedules > div:first-child {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .responsive-calendar .calendar-cell > div:first-child > span:last-child {
+    align-self: center;
+    text-align: center;
+    font-size: 1rem;
+    padding-left: 0.125rem;
+    padding-right: 0.125rem;
+    padding-top: 0.25rem;
+    background: transparent;
+  }
+
+  .responsive-calendar .calendar-count-label {
+    display: inline;
+  }
+
+  .responsive-calendar .calendar-cell .text-\[10px\] {
+    font-size: 0.5625rem;
+  }
+
+
+  /* Compact numeric strips inside detail modals (e.g. Purok risk totals,
+     BHW performance stats) so 4-5 columns still fit at 320px. */
+  .mobile-stat-strip > div {
+    padding-left: 0.125rem;
+    padding-right: 0.125rem;
+  }
+
+  /* Only strips whose numbers start at text-3xl need shrinking; a strip
+     that already uses text-xl must not be enlarged on mobile. */
+  .mobile-stat-strip-lg > div > p {
+    font-size: 1.375rem;
+    line-height: 1.25;
+  }
+
+  .mobile-stat-strip > div > label {
+    font-size: 0.5625rem;
+    letter-spacing: 0.01em;
+  }
+
+  .glass-table {
+    min-width: 38rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .modal-panel form > .flex.justify-end,
+  .modal-panel form > .flex.justify-between {
+    flex-wrap: wrap;
+  }
+}
