@@ -2,17 +2,26 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Modal from '../components/Modal'
 import logo from '../assets/logo.png'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!error) return undefined
+    const timeout = window.setTimeout(() => setError(''), 3000)
+    return () => window.clearTimeout(timeout)
+  }, [error])
 
   useEffect(() => {
     const scrollY = window.scrollY
@@ -61,6 +70,12 @@ const Login = () => {
 
     if (!email || !password) {
       setError('Please fill out all fields')
+      setLoading(false)
+      return
+    }
+
+    if (!privacyAccepted) {
+      setError('Please acknowledge the Data Privacy Act notice to continue')
       setLoading(false)
       return
     }
@@ -180,7 +195,7 @@ const Login = () => {
           <form
             onSubmit={handleSubmit}
             noValidate
-            className='flex flex-col gap-4 sm:gap-[22px]'
+            className='flex flex-col gap-3 sm:gap-4'
           >
             <label className='flex flex-col gap-1.5 sm:gap-2'>
               <span
@@ -294,6 +309,30 @@ const Login = () => {
               </div>
             </label>
 
+            <label className='-mt-1 flex items-start gap-2.5 pl-2 text-xs sm:text-sm text-white/80 leading-snug'>
+              <input
+                type='checkbox'
+                checked={privacyAccepted}
+                onChange={e => setPrivacyAccepted(e.target.checked)}
+                required
+                className='privacy-policy-checkbox mt-0.5 h-4 w-4 shrink-0'
+              />
+              <span>
+                I agree to the{' '}
+                <button
+                  type='button'
+                  onClick={event => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setShowPrivacyPolicy(true)
+                  }}
+                  className='font-semibold text-sky-300 hover:text-sky-200'
+                >
+                  Privacy Policy
+                </button>
+              </span>
+            </label>
+
             {error && (
               <p className='text-[13px] sm:text-[14px] text-red-200 bg-red-500/20 border border-red-400/30 rounded-xl p-3 sm:p-4 animate-[shake_0.4s_both]'>
                 {error}
@@ -303,7 +342,7 @@ const Login = () => {
             <button
               type='submit'
               disabled={loading}
-              className='login-btn py-[10px] sm:py-[11px] border-none rounded-2xl text-white text-[14px] sm:text-[16px] font-semibold cursor-pointer mt-0'
+              className={`login-btn py-[10px] sm:py-[11px] border-none rounded-2xl text-white text-[14px] sm:text-[16px] font-semibold cursor-pointer ${error ? 'mt-0' : 'mt-2'}`}
              
             >
               {loading ? 'Signing in...' : 'Sign in'}
@@ -311,6 +350,46 @@ const Login = () => {
           </form>
         </div>
       </div>
+
+      <Modal
+        isOpen={showPrivacyPolicy}
+        onClose={() => setShowPrivacyPolicy(false)}
+        title='Privacy Policy'
+        size='md'
+      >
+        <div className='space-y-4 text-sm leading-relaxed text-white/80'>
+          <p>
+            CitiCare handles personal information in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173) and its implementing rules.
+          </p>
+          <section>
+            <h3 className='mb-1 font-semibold text-white'>Information and purpose</h3>
+            <p>
+              Information entered into CitiCare is used by authorized barangay health personnel to manage accounts and support healthcare monitoring, scheduling, and related services.
+            </p>
+          </section>
+          <section>
+            <h3 className='mb-1 font-semibold text-white'>Access and protection</h3>
+            <p>
+              Access is limited to authorized users according to their roles. Reasonable safeguards are used to protect information against unauthorized access, disclosure, alteration, or loss.
+            </p>
+          </section>
+          <section>
+            <h3 className='mb-1 font-semibold text-white'>Your rights</h3>
+            <p>
+              You may exercise your rights as a data subject under applicable privacy laws by contacting the barangay office or the appropriate data protection officer.
+            </p>
+          </section>
+          <label className='mt-2 flex items-start gap-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-white/90 sm:text-sm'>
+            <input
+              type='checkbox'
+              checked={privacyAccepted}
+              onChange={event => setPrivacyAccepted(event.target.checked)}
+              className='privacy-policy-checkbox mt-0.5 h-4 w-4 shrink-0'
+            />
+            <span>By checking this box, I agree to the Privacy Policy.</span>
+          </label>
+        </div>
+      </Modal>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
