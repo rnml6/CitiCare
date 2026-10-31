@@ -799,7 +799,7 @@
   }
 
   .responsive-main {
-    padding-bottom: 100px;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 
   .responsive-main h1 {
