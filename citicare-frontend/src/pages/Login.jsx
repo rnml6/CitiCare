@@ -146,7 +146,7 @@ const Login = () => {
         }`}
         style={{ zIndex: showForm ? 10 : 8 }}
       >
-        <div className='relative w-full max-w-[480px] mx-auto px-6 py-4 sm:p-7 pt-8 sm:pt-12 rounded-3xl bg-white/[0.09] border border-white/30 shadow-[0_25px_55px_rgba(2,21,41,0.45),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl text-white'>
+        <div className='relative w-full max-w-full sm:max-w-[400px] mx-auto px-6 py-4 sm:p-7 pt-8 sm:pt-12 rounded-3xl bg-white/[0.09] border border-white/30 shadow-[0_25px_55px_rgba(2,21,41,0.45),inset_0_1px_0_rgba(255,255,255,0.25)] backdrop-blur-2xl text-white'>
           <button
             onClick={() => setShowForm(false)}
             className='absolute top-4 right-4 w-[27px] h-[27px] bg-white/10 border border-white/20 rounded-full text-white/75 p-1.5 flex items-center justify-center hover:bg-white/20 transition-colors'
