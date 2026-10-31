@@ -567,7 +567,7 @@
   }
 
   .responsive-main {
-    padding: 0.875rem 0.75rem calc(2rem + env(safe-area-inset-bottom));
+    padding: 0.875rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
   }
 
   .responsive-main > div {
