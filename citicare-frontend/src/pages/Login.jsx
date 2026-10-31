@@ -309,13 +309,13 @@ const Login = () => {
               </div>
             </label>
 
-            <label className='-mt-1 flex items-start gap-2.5 pl-2 text-xs sm:text-sm text-white/80 leading-snug'>
+            <label className='-mt-1 flex items-center gap-2.5 pl-2 text-xs sm:text-sm text-white/80 leading-snug'>
               <input
                 type='checkbox'
                 checked={privacyAccepted}
                 onChange={e => setPrivacyAccepted(e.target.checked)}
                 required
-                className='privacy-policy-checkbox mt-0.5 h-4 w-4 shrink-0'
+                className='privacy-policy-checkbox h-4 w-4 shrink-0'
               />
               <span>
                 I agree to the{' '}
