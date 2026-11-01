@@ -86,7 +86,12 @@ const GlassInput = forwardRef(({
     <div className="space-y-1.5">
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-blue-200">
-          {label}
+          {label === 'Contact Person Number' ? (
+            <>
+              <span className='sm:hidden'>Contact Number</span>
+              <span className='hidden sm:inline'>Contact Person Number</span>
+            </>
+          ) : label}
         </label>
       )}
       <div className="relative">

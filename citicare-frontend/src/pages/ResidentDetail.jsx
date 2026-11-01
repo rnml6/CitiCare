@@ -3329,7 +3329,10 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
             )}
             {resident.contactPersonNumber && (
               <div>
-                <label className='block text-[11px] uppercase tracking-wide text-white/50 mb-1'>Contact Person Number</label>
+                <label className='block text-[11px] uppercase tracking-wide text-white/50 mb-1'>
+                  <span className='sm:hidden'>Contact Number</span>
+                  <span className='hidden sm:inline'>Contact Person Number</span>
+                </label>
                 <p className='text-sm text-white/85'>{resident.contactPersonNumber}</p>
               </div>
             )}

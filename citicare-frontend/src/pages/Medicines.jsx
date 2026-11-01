@@ -296,7 +296,8 @@ const Medicines = () => {
             className='text-2xl font-bold text-white'
            
           >
-            Medicine Management
+            <span className='sm:hidden'>Medicine</span>
+            <span className='hidden sm:inline'>Medicine Management</span>
           </h1>
           <p className='text-sm text-white/75'>
             {filteredMedicines.length} of {medicines.length} medicine

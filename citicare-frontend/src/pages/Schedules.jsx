@@ -760,7 +760,7 @@ const Schedules = () => {
 
       {/* Add Schedule Modal */}
       <Modal isOpen={showAddModal} onClose={closeModal} title="New Schedule" size="xl">
-        <form onSubmit={handleSave} className="max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSave} className="w-full min-w-0 max-w-full max-h-[70vh] overflow-x-hidden overflow-y-auto">
           <div className='flex bg-white/10 rounded-xl p-1 border backdrop-blur-lg border-white/20 mb-4'>
             {[{ value: 'individual', label: 'Individual' }, { value: 'purok', label: 'Per Purok' }, { value: 'barangay', label: 'Barangay-wide' }].map(s => (
               <button key={s.value} type='button' onClick={() => setScope(s.value)} className={`flex-1 py-2.5 px-1 sm:px-3 rounded-[10px] text-xs sm:text-sm font-medium transition-all ${scope === s.value ? 'bg-blue-500/40 text-white' : 'text-white/85 hover:text-white'}`}>{s.label}</button>
@@ -977,7 +977,7 @@ const Schedules = () => {
 
       {/* Edit Schedule Modal */}
       <Modal isOpen={showEditModal} onClose={closeModal} title="Edit Schedule" size="xl">
-        <form onSubmit={handleSave} className="max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSave} className="w-full min-w-0 max-w-full max-h-[70vh] overflow-x-hidden overflow-y-auto">
           <div className='flex bg-white/10 rounded-xl p-1 border backdrop-blur-lg border-white/20 mb-4'>
             {[{ value: 'individual', label: 'Individual' }, { value: 'purok', label: 'Per Purok' }, { value: 'barangay', label: 'Barangay-wide' }].map(s => (
               <button key={s.value} type='button' onClick={() => setScope(s.value)} className={`flex-1 py-2.5 px-1 sm:px-3 rounded-[10px] text-xs sm:text-sm font-medium transition-all ${scope === s.value ? 'bg-blue-500/40 text-white' : 'text-white/85 hover:text-white'}`}>{s.label}</button>
