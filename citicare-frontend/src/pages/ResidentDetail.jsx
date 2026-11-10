@@ -3228,8 +3228,8 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
       )}
 
       {(resident.riskLevel && resident.riskScore != null) || resident.focusGroups?.length > 0 ? (
-        <div className='flex flex-col gap-0.5 sm:gap-1.5'>
-          <div className='flex items-center justify-between gap-1.5'>
+        <div className='flex flex-col gap-0.5 sm:gap-1.5 lg:flex-row lg:items-center lg:justify-start lg:gap-1.5'>
+          <div className='flex items-center justify-between gap-1.5 lg:order-2'>
           <div className='resident-risk-summary flex flex-wrap items-center gap-1.5 min-w-0'>
           {resident.riskLevel && resident.riskScore != null && (
             <>
@@ -3268,7 +3268,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           </div>
           </div>
           {resident.focusGroups?.length > 0 && (
-            <div className='resident-focus-summary mt-2 sm:mt-0 flex flex-wrap items-center gap-1.5'>
+            <div className='resident-focus-summary mt-2 sm:mt-0 flex flex-wrap items-center gap-1.5 lg:order-1 lg:mt-0 lg:flex-nowrap lg:shrink-0'>
               {resident.focusGroups.map(g => (
                 <span
                   key={g}
