@@ -129,7 +129,9 @@ export const getDashboardStats = async (req, res) => {
     const totalResidents = residents.length;
 
     // Active BHWs — only meaningful for admins; workers see 1 (themselves)
-    let bhwQuery = supabase.from('bhws').select('*', { count: 'exact', head: true }).eq('status', 'Active');
+    let bhwQuery = supabase.from('bhws').select('*', { count: 'exact', head: true })
+      .eq('status', 'Active')
+      .eq('worker_type', 'BHW');
     if (worker) bhwQuery = bhwQuery.eq('bhw_id', req.user.bhwId || 0);
     const { count: totalBHWs, error: bErr } = await bhwQuery;
     if (bErr) throw bErr;
