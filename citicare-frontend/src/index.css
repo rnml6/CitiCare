@@ -609,7 +609,9 @@
   }
 
   .responsive-main {
-    padding: 0.875rem 0.75rem calc(2.5rem + env(safe-area-inset-bottom));
+    /* Clear the fixed bottom navigation so pagination and the last card
+       are never hidden behind it. */
+    padding: 0.875rem 0.75rem calc(7rem + env(safe-area-inset-bottom));
   }
 
   .responsive-main > div {
