@@ -3,15 +3,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search, Plus, Users as UsersIcon, Pencil, Trash2,
-  ArrowLeft, Save, Loader2
+  ArrowLeft, Save, Loader2, AlertTriangle
 } from 'lucide-react'
 import { residentApi } from '../api/residentApi'
+import { dashboardApi } from '../api/dashboardApi'
 import { purokApi } from '../api/purokApi'
 import GlassCard from '../components/GlassCard'
 import GlassButton from '../components/GlassButton'
 import GlassInput from '../components/GlassInput'
 import GlassSelect from '../components/GlassSelect'
 import Modal from '../components/Modal'
+import StatCard from '../components/StatCard'
+import PriorityResidentsSidebar from '../components/PriorityResidentsSidebar'
 import ResidentDetail from './ResidentDetail'
 import { SkeletonResidentsPage } from '../components/Skeleton'
 import Pagination from '../components/Pagination'
@@ -19,7 +22,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { dialog } from '../context/DialogContext'
 import { confirmCreate, confirmUpdate } from '../utils/crudConfirm'
 import { focusFirstError } from '../utils/focusInvalidField'
-import { getRiskColor, getRiskScoreColor, formatDate, focusGroupLabel, focusGroupsMatch, formatAgeLong } from '../utils/helpers'
+import { getRiskColor, getRiskScoreColor, formatDate, focusGroupLabel, focusGroupsMatch, formatAgeLong, sortResidentsAlphabetically } from '../utils/helpers'
 import {
   validateResidentFields,
   hasErrors,
@@ -29,6 +32,8 @@ import {
 
 const Residents = () => {
   const [residents, setResidents] = useState([])
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState([])
+  const [missedConsultations, setMissedConsultations] = useState([])
   const [puroks, setPuroks] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -86,6 +91,7 @@ const Residents = () => {
 
   const handleDetailDeleted = (deletedId) => {
     setResidents(prev => prev.filter(r => r.id !== deletedId))
+    setRecentlyAddedIds(prev => prev.filter(id => String(id) !== String(deletedId)))
   }
 
   const navigate = useNavigate()
@@ -100,8 +106,12 @@ const Residents = () => {
     try { const response = await purokApi.getAll(); if (response.data.success) setPuroks(response.data.data) }
     catch (error) { console.error('Error fetching puroks:', error) }
   }, [])
+  const fetchMissedConsultations = useCallback(async () => {
+    try { const response = await dashboardApi.getMissedConsultations(); if (response.data.success) setMissedConsultations(response.data.data || []) }
+    catch (error) { console.error('Error fetching missed consultations:', error) }
+  }, [])
 
-  useEffect(() => { fetchResidents(); fetchPuroks() }, [fetchResidents, fetchPuroks])
+  useEffect(() => { fetchResidents(); fetchPuroks(); fetchMissedConsultations() }, [fetchResidents, fetchPuroks, fetchMissedConsultations])
 
   // Open detail modal when navigated here with viewResidentId (Dashboard/Purok flows) - modal only, no page
   useEffect(() => {
@@ -266,7 +276,15 @@ const Residents = () => {
         disabilityType: isPwdChecked ? (formData.disabilityType?.trim() || null) : null
       }
       if (editingResident) { await residentApi.update(editingResident.id, dataToSend) }
-      else { await residentApi.create(dataToSend) }
+      else {
+        const response = await residentApi.create(dataToSend)
+        const createdId = response?.data?.data?.id
+        if (createdId != null) {
+          // Pin the new resident to the top until the page is reloaded.
+          setRecentlyAddedIds(prev => [createdId, ...prev.filter(id => String(id) !== String(createdId))])
+          setPage(1)
+        }
+      }
       closeModal()
       fetchResidents()
       dialog.toast(editingResident ? 'Resident updated successfully.' : 'Resident added successfully.', 'success')
@@ -281,21 +299,30 @@ const Residents = () => {
   }
 
   const confirmDelete = async () => {
-    try { setDeletingId(deleteTargetId); await residentApi.delete(deleteTargetId); setResidents(prev => prev.filter(r => r.id !== deleteTargetId)); dialog.toast('Resident deleted.', 'success') }
+    try { setDeletingId(deleteTargetId); await residentApi.delete(deleteTargetId); setResidents(prev => prev.filter(r => r.id !== deleteTargetId)); setRecentlyAddedIds(prev => prev.filter(id => String(id) !== String(deleteTargetId))); dialog.toast('Resident deleted.', 'success') }
     catch (error) { console.error('Error deleting resident:', error); dialog.error(error.response?.data?.message || 'Failed to delete resident', 'Unable to delete resident') }
     finally { setDeletingId(null); setShowDeleteConfirm(false); setDeleteTargetId(null) }
   }
 
-  const filteredResidents = residents.filter(resident => {
+  const filteredResidents = sortResidentsAlphabetically(residents.filter(resident => {
     const matchesSearch = !searchTerm || resident.name?.toLowerCase().includes(searchTerm.toLowerCase()) || resident.purok?.toLowerCase().includes(searchTerm.toLowerCase())
     if (!matchesSearch) return false
     if (filterPurok !== 'all' && resident.purok !== filterPurok) return false
     if (filterRisk !== 'all' && resident.riskLevel !== filterRisk) return false
     if (filterFocusGroup !== 'all') { if (filterFocusGroup === 'none') { if ((resident.focusGroups || []).length > 0) return false } else { if (!focusGroupsMatch(resident.focusGroups, filterFocusGroup)) return false } }
     return true
-  })
+  }), recentlyAddedIds)
 
   const hasActiveFilters = filterPurok !== 'all' || filterRisk !== 'all' || filterFocusGroup !== 'all' || searchTerm !== ''
+
+  const riskCounts = residents.reduce((counts, resident) => {
+    const level = String(resident.riskLevel || '').toLowerCase()
+    if (level.includes('critical')) counts.critical += 1
+    else if (level.includes('high')) counts.high += 1
+    else if (level.includes('moderate')) counts.moderate += 1
+    else if (level.includes('low')) counts.low += 1
+    return counts
+  }, { critical: 0, high: 0, moderate: 0, low: 0 })
 
   useEffect(() => { setPage(1) }, [searchTerm, filterPurok, filterRisk, filterFocusGroup])
 
@@ -314,6 +341,14 @@ const Residents = () => {
         <GlassButton size='lg' className='ml-auto' icon={Plus} title='Add Resident' onClick={openAddModal}>
           <span className='hidden sm:inline'>Add Resident</span>
         </GlassButton>
+      </div>
+
+      {/* Risk summary cards: desktop only — mobile/tablet layout stays as-is */}
+      <div className='hidden xl:grid xl:grid-cols-4 gap-3'>
+        <StatCard label='Critical Risk' value={riskCounts.critical} icon={AlertTriangle} color='red' />
+        <StatCard label='High Risk' value={riskCounts.high} icon={AlertTriangle} color='orange' />
+        <StatCard label='Moderate Risk' value={riskCounts.moderate} icon={UsersIcon} color='yellow' />
+        <StatCard label='Low Risk' value={riskCounts.low} icon={UsersIcon} color='green' />
       </div>
 
       <div className='space-y-3'>
@@ -417,54 +452,64 @@ const Residents = () => {
         </div>
       </div>
 
-      {filteredResidents.length > 0 ? (
-        <>
-          <div className='grid grid-cols-1 gap-3'>
-            {paginatedResidents.map(resident => (
-              <GlassCard key={resident.id} onClick={() => openDetailModal(resident)} className='cursor-pointer'>
-                <div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3'>
-                  <div className='flex items-center gap-3 sm:flex-1 min-w-0'>
-                    <div className='min-w-0'>
-                      <h3 className='text-white text-xl font-semibold truncate'>{resident.name}</h3>
-                      <p className='text-sm text-white/75 pl-0.5 sm:pl-0'>
-                        {resident.dateOfBirth ? calculateAge(resident.dateOfBirth).display : (resident.age != null ? resident.age + 'y' : 'N/A')}
-                        <span className='text-white/50 mx-1.5'>•</span>{resident.gender || 'N/A'}
-                        <span className='hidden sm:inline'><span className='text-white/50 mx-1.5'>•</span>{resident.purok || 'No Purok'}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <div className='flex flex-wrap items-center gap-2 sm:shrink-0'>
-                    <div className='flex min-w-0 items-center gap-2'>
-                    {resident.focusGroups?.length > 0 && (
-                    <div className='shrink-0'>
-                      <div className='hidden sm:flex flex-wrap gap-1'>
-                        {resident.focusGroups.map(group => <span key={group} className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{focusGroupLabel(group)}</span>)}
+      <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start'>
+        <div className='min-w-0 space-y-4'>
+          {filteredResidents.length > 0 ? (
+            <>
+              <div className='grid grid-cols-1 gap-3'>
+                {paginatedResidents.map(resident => (
+                  <GlassCard key={resident.id} onClick={() => openDetailModal(resident)} className='cursor-pointer'>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3'>
+                      <div className='flex items-center gap-3 sm:flex-1 min-w-0'>
+                        <div className='min-w-0'>
+                          <h3 className='text-white text-xl font-semibold truncate'>{resident.name}</h3>
+                          <p className='text-sm text-white/75 pl-0.5 sm:pl-0'>
+                            {resident.dateOfBirth ? calculateAge(resident.dateOfBirth).display : (resident.age != null ? resident.age + 'y' : 'N/A')}
+                            <span className='text-white/50 mx-1.5'>•</span>{resident.gender || 'N/A'}
+                            <span className='hidden sm:inline'><span className='text-white/50 mx-1.5'>•</span>{resident.purok || 'No Purok'}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div className='flex sm:hidden flex-wrap gap-1'>
-                        <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{focusGroupLabel(resident.focusGroups[0])}</span>
-                        {resident.focusGroups.length > 1 && <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>+{resident.focusGroups.length - 1}</span>}
+                      <div className='flex flex-wrap items-center gap-2 sm:shrink-0'>
+                        <div className='flex min-w-0 items-center gap-2'>
+                        {resident.focusGroups?.length > 0 && (
+                        <div className='shrink-0'>
+                          <div className='hidden sm:flex flex-wrap gap-1'>
+                            {resident.focusGroups.map(group => <span key={group} className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{focusGroupLabel(group)}</span>)}
+                          </div>
+                          <div className='flex sm:hidden flex-wrap gap-1'>
+                            <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{focusGroupLabel(resident.focusGroups[0])}</span>
+                            {resident.focusGroups.length > 1 && <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>+{resident.focusGroups.length - 1}</span>}
+                          </div>
+                        </div>
+                      )}
+                        <span className={`badge ${getRiskColor(resident.riskLevel)}`}>{resident.riskLevel}</span>
+                        </div>
+                        <div className='ml-auto flex items-center gap-1 sm:ml-0' onClick={e => e.stopPropagation()}>
+                          <button onClick={() => openEditModal(resident)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-blue-400' title='Edit'><Pencil className='w-4 h-4' /></button>
+                          <button onClick={e => handleDelete(resident.id, e)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-red-400' title='Delete'><Trash2 className='w-4 h-4' /></button>
+                        </div>
                       </div>
                     </div>
-                  )}
-                    <span className={`badge ${getRiskColor(resident.riskLevel)}`}>{resident.riskLevel}</span>
-                    </div>
-                    <div className='ml-auto flex items-center gap-1 sm:ml-0' onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEditModal(resident)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-blue-400' title='Edit'><Pencil className='w-4 h-4' /></button>
-                      <button onClick={e => handleDelete(resident.id, e)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-red-400' title='Delete'><Trash2 className='w-4 h-4' /></button>
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
-          {!hasActiveFilters && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} total={filteredResidents.length} perPage={perPage} />}
-        </>
-      ) : (
-        <GlassCard hover={false} className='text-center py-12'>
-          <UsersIcon className='w-16 h-16 text-white/50 mx-auto mb-4' />
-          <p className='text-white/65 text-sm mb-2'>No residents found</p>
-        </GlassCard>
-      )}
+                  </GlassCard>
+                ))}
+              </div>
+              {!hasActiveFilters && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} total={filteredResidents.length} perPage={perPage} />}
+            </>
+          ) : (
+            <GlassCard hover={false} className='text-center py-12'>
+              <UsersIcon className='w-16 h-16 text-white/50 mx-auto mb-4' />
+              <p className='text-white/65 text-sm mb-2'>No residents found</p>
+            </GlassCard>
+          )}
+        </div>
+
+        <PriorityResidentsSidebar
+          residents={residents}
+          missedConsultations={missedConsultations}
+          onOpenResident={openDetailModal}
+        />
+      </div>
 
       {/* Add Resident Modal */}
       <Modal isOpen={showAddModal} onClose={closeModal} title="Add New Resident" panelClassName='resident-add-modal'>

@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Search, Plus, Users, Heart, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
 import { residentApi } from '../../api/residentApi'
+import { dashboardApi } from '../../api/dashboardApi'
 import { purokApi } from '../../api/purokApi'
 import { useAuth } from '../../context/AuthContext'
 import GlassCard from '../../components/GlassCard'
@@ -14,9 +15,10 @@ import GlassSelect from '../../components/GlassSelect'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import StatCard from '../../components/StatCard'
+import PriorityResidentsSidebar from '../../components/PriorityResidentsSidebar'
 import ResidentDetail from '../ResidentDetail'
 import { SkeletonMyResidentsPage } from '../../components/Skeleton'
-import { getRiskColor, formatAge, formatAgeLong } from '../../utils/helpers'
+import { getRiskColor, formatAge, formatAgeLong, sortResidentsAlphabetically } from '../../utils/helpers'
 import { dialog } from '../../context/DialogContext'
 import { confirmCreate, confirmUpdate } from '../../utils/crudConfirm'
 import { sanitizePhoneInput, blockPhoneKeys } from '../../utils/validation'
@@ -40,6 +42,8 @@ const MyResidents = () => {
   const [returnState, setReturnState] = useState(null)
   const bhwName = user?.bhw?.name || user?.name || ''
   const [data, setData] = useState(null)
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState([])
+  const [missedConsultations, setMissedConsultations] = useState([])
   const [purok, setPurok] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('purok')
@@ -60,7 +64,7 @@ const MyResidents = () => {
   const [editAgeDisplay, setEditAgeDisplay] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
-  useEffect(() => { fetchMine(); fetchPurok() }, [])
+  useEffect(() => { fetchMine(); fetchPurok(); fetchMissedConsultations() }, [])
   useEffect(() => { setPage(1) }, [search, tab, filterRisk, filterGroup])
 
   const calculateAge = dateOfBirth => {
@@ -141,6 +145,15 @@ const MyResidents = () => {
     }
   }
 
+  const fetchMissedConsultations = async () => {
+    try {
+      const res = await dashboardApi.getMissedConsultations()
+      if (res.data.success) setMissedConsultations(res.data.data || [])
+    } catch (err) {
+      console.error('Missed consultations error:', err)
+    }
+  }
+
   const openDetail = (id) => {
     setDetailId(id)
   }
@@ -207,7 +220,13 @@ const MyResidents = () => {
         fatherName: isInfantAge ? (addForm.fatherName?.trim() || null) : null,
         disabilityType: isPwdChecked ? (addForm.disabilityType?.trim() || null) : null
       }
-      await residentApi.create(dataToSend)
+      const created = await residentApi.create(dataToSend)
+      const createdId = created?.data?.data?.id
+      if (createdId != null) {
+        // Pin the new resident to the top until the page is reloaded.
+        setRecentlyAddedIds(prev => [createdId, ...prev.filter(id => String(id) !== String(createdId))])
+        setPage(1)
+      }
       setShowAdd(false)
       setAddErrors({})
       setAddForm({ name: '', gender: 'Female', dateOfBirth: '', civilStatus: 'Single', contactNumber: '', contactPerson: '', contactPersonNumber: '', contactPersonAddress: '', lastCheckup: '', focusGroups: [], chronicConditions: [], motherName: '', fatherName: '', disabilityType: '' })
@@ -371,6 +390,7 @@ const MyResidents = () => {
     if (!confirmed) return
     try {
       await residentApi.delete(id)
+      setRecentlyAddedIds(prev => prev.filter(recentId => String(recentId) !== String(id)))
       fetchMine()
       dialog.toast('Resident deleted.', 'success')
     } catch (err) {
@@ -382,7 +402,10 @@ const MyResidents = () => {
     return <SkeletonMyResidentsPage count={6} />
   }
 
-  const list = tab === 'focus' ? (data?.focusResidents || []) : (data?.purokResidents || [])
+  const list = sortResidentsAlphabetically(
+    tab === 'focus' ? (data?.focusResidents || []) : (data?.purokResidents || []),
+    recentlyAddedIds
+  )
   const filtered = list.filter(r => {
     if (search && !r.name?.toLowerCase().includes(search.toLowerCase())) return false
     if (filterRisk !== 'all' && r.riskLevel !== filterRisk) return false
@@ -445,7 +468,7 @@ const MyResidents = () => {
               <StatCard label='Total Residents' value={focusStats.total} icon={Users} color='blue' />
               <StatCard label='Critical Risk' value={focusStats.critical} icon={AlertTriangle} color='red' />
               <StatCard label='High Risk' value={focusStats.high} icon={AlertTriangle} color='orange' />
-              <StatCard label='Moderate Risk' value={focusStats.moderate} icon={Users} color='purple' />
+              <StatCard label='Moderate Risk' value={focusStats.moderate} icon={Users} color='yellow' />
               <StatCard label='Low Risk' value={focusStats.low} icon={Users} color='green' />
             </>
           ) : purok ? (
@@ -453,7 +476,7 @@ const MyResidents = () => {
               <StatCard label='Total Residents' value={purok.totalResidents} icon={Users} color='blue' />
               <StatCard label='Critical Risk' value={purok.critical} icon={AlertTriangle} color='red' />
               <StatCard label='High Risk' value={purok.high} icon={AlertTriangle} color='orange' />
-              <StatCard label='Moderate Risk' value={purok.moderate} icon={Users} color='purple' />
+              <StatCard label='Moderate Risk' value={purok.moderate} icon={Users} color='yellow' />
               <StatCard label='Low Risk' value={purok.low} icon={Users} color='green' />
             </>
           ) : null}
@@ -585,48 +608,58 @@ const MyResidents = () => {
         )}
       </div>
 
-      {paged.length > 0 ? (
-        <>
-          <div className='grid grid-cols-1 gap-3'>
-            {paged.map(r => (
-              <GlassCard key={r.id} onClick={() => openDetail(r.id)} className='cursor-pointer'>
-                <div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3'>
-                  <div className='flex items-center gap-3 sm:flex-1 min-w-0'>
-                    <div className='min-w-0'>
-                      <h3 className='text-white text-xl font-semibold truncate'>{r.name}</h3>
-                      <p className='text-sm text-white/75 pl-0.5 sm:pl-0'>
-                        {r.dateOfBirth ? formatAge(r.age, r.dateOfBirth) : r.age != null ? `${r.age}y` : 'N/A'}
-                        <span className='text-white/50 mx-1.5'>•</span>
-                        {r.gender || 'N/A'}
-                        {tab === 'focus' && r.purok && <><span className='text-white/50 mx-1.5'>•</span>{r.purok}</>}
-                      </p>
-                    </div>
-                  </div>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    {r.focusGroups?.length > 0 && (
-                      <div className='flex flex-wrap gap-1 min-w-0'>
-                        {r.focusGroups.slice(0, 1).map(group => <span key={group} className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{FOCUS_LABELS[group] || group}</span>)}
-                        {r.focusGroups.length > 1 && <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>+{r.focusGroups.length - 1}</span>}
+      <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start'>
+        <div className='min-w-0 space-y-4'>
+          {paged.length > 0 ? (
+            <>
+              <div className='grid grid-cols-1 gap-3'>
+                {paged.map(r => (
+                  <GlassCard key={r.id} onClick={() => openDetail(r.id)} className='cursor-pointer'>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3'>
+                      <div className='flex items-center gap-3 sm:flex-1 min-w-0'>
+                        <div className='min-w-0'>
+                          <h3 className='text-white text-xl font-semibold truncate'>{r.name}</h3>
+                          <p className='text-sm text-white/75 pl-0.5 sm:pl-0'>
+                            {r.dateOfBirth ? formatAge(r.age, r.dateOfBirth) : r.age != null ? `${r.age}y` : 'N/A'}
+                            <span className='text-white/50 mx-1.5'>•</span>
+                            {r.gender || 'N/A'}
+                            {tab === 'focus' && r.purok && <><span className='text-white/50 mx-1.5'>•</span>{r.purok}</>}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <span className={`badge ${getRiskColor(r.riskLevel)}`}>{r.riskLevel}</span>
-                    <div className='ml-auto flex items-center gap-1 sm:ml-0' onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEditResident(r)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-blue-400' title='Edit'><Pencil className='w-4 h-4' /></button>
-                      <button onClick={() => handleDeleteResident(r.id)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-red-400' title='Delete'><Trash2 className='w-4 h-4' /></button>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        {r.focusGroups?.length > 0 && (
+                          <div className='flex flex-wrap gap-1 min-w-0'>
+                            {r.focusGroups.slice(0, 1).map(group => <span key={group} className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>{FOCUS_LABELS[group] || group}</span>)}
+                            {r.focusGroups.length > 1 && <span className='resident-focus-badge px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-400/30 rounded-full text-[10px] font-medium'>+{r.focusGroups.length - 1}</span>}
+                          </div>
+                        )}
+                        <span className={`badge ${getRiskColor(r.riskLevel)}`}>{r.riskLevel}</span>
+                        <div className='ml-auto flex items-center gap-1 sm:ml-0' onClick={e => e.stopPropagation()}>
+                          <button onClick={() => openEditResident(r)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-blue-400' title='Edit'><Pencil className='w-4 h-4' /></button>
+                          <button onClick={() => handleDeleteResident(r.id)} className='p-1.5 rounded-lg hover:bg-white/10 text-white/75 hover:text-red-400' title='Delete'><Trash2 className='w-4 h-4' /></button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
-          </div>
-          {!hasActiveFilters && <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />}
-        </>
-      ) : (
-        <GlassCard hover={false} className='text-center py-12'>
-          <User className='w-10 h-10 text-white/40 mx-auto mb-3' />
-          <p className='text-white/65 text-sm'>{data?.purok ? 'No residents in this list yet' : 'No purok assigned yet — new residents will appear here once you are assigned.'}</p>
-        </GlassCard>
-      )}
+                  </GlassCard>
+                ))}
+              </div>
+              {!hasActiveFilters && <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />}
+            </>
+          ) : (
+            <GlassCard hover={false} className='text-center py-12'>
+              <User className='w-10 h-10 text-white/40 mx-auto mb-3' />
+              <p className='text-white/65 text-sm'>{data?.purok ? 'No residents in this list yet' : 'No purok assigned yet — new residents will appear here once you are assigned.'}</p>
+            </GlassCard>
+          )}
+        </div>
+
+        <PriorityResidentsSidebar
+          residents={list}
+          missedConsultations={missedConsultations}
+          onOpenResident={resident => openDetail(resident.id)}
+        />
+      </div>
 
       <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title='Add New Resident' panelClassName='resident-add-modal'>
         <form onSubmit={handleAddResident} className='space-y-4'>

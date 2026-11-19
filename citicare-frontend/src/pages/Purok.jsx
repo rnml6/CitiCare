@@ -42,7 +42,9 @@ import {
   formatTime,
   getStatusColor,
   getRiskColor,
-  formatAge
+  formatAge,
+  sortResidentsAlphabetically,
+  sortByNameNatural
 } from '../utils/helpers'
 import { navigateWithReturn } from '../utils/navigation'
 
@@ -397,7 +399,7 @@ const Purok = () => {
     }
   }
 
-  const filteredResidents = purokResidents.filter(r => {
+  const filteredResidents = sortResidentsAlphabetically(purokResidents.filter(r => {
     if (
       residentSearch &&
       !r.name?.toLowerCase().includes(residentSearch.toLowerCase())
@@ -414,7 +416,7 @@ const Purok = () => {
     if (filterRiskLevel !== 'all' && normRisk(r.riskLevel) !== normRisk(filterRiskLevel))
       return false
     return true
-  })
+  }))
   const hasActiveResidentFilters = residentSearch !== '' || filterFocusGroup !== 'all' || filterRiskLevel !== 'all'
   const totalResidentPages = Math.ceil(
     filteredResidents.length / residentsPerPage
@@ -553,7 +555,7 @@ const Purok = () => {
   }
   const hasActivePurokFilters =
     searchTerm !== '' || filterPurokRisk !== 'all' || filterBhwStatus !== 'all'
-  const filteredPuroks = puroks.filter(p => {
+  const filteredPuroks = sortByNameNatural(puroks.filter(p => {
     if (
       searchTerm &&
       !p.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -565,7 +567,7 @@ const Purok = () => {
     if (filterBhwStatus === 'assigned' && assignedCount === 0) return false
     if (filterBhwStatus === 'unassigned' && assignedCount > 0) return false
     return true
-  })
+  }))
   useEffect(() => { setPurokPage(1) }, [searchTerm, filterPurokRisk, filterBhwStatus])
   const totalPurokPages = Math.max(1, Math.ceil(filteredPuroks.length / puroksPerPage))
   const safePurokPage = Math.min(Math.max(1, purokPage), totalPurokPages)

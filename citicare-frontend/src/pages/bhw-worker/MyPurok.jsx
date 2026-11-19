@@ -9,7 +9,7 @@ import GlassInput from '../../components/GlassInput'
 import StatCard from '../../components/StatCard'
 import Pagination from '../../components/Pagination'
 import { SkeletonMyPurokPage } from '../../components/Skeleton'
-import { getRiskColor, getRiskScoreColor } from '../../utils/helpers'
+import { getRiskColor, getRiskScoreColor, sortResidentsAlphabetically } from '../../utils/helpers'
 
 const MyPurok = () => {
   const [purok, setPurok] = useState(null)
@@ -47,7 +47,7 @@ const MyPurok = () => {
     )
   }
 
-  const residents = purok.residents || []
+  const residents = sortResidentsAlphabetically(purok.residents || [])
   const filtered = residents.filter(r => !search || r.name?.toLowerCase().includes(search.toLowerCase()))
   const hasActiveFilters = search !== ''
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))

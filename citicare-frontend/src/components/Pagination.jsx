@@ -22,24 +22,28 @@ const Pagination = ({
   alwaysShow = false,
   pageLabel = false,
   hidePageIndicator = false,
-  hidePageIndicatorOnMobile = true
+  hidePageIndicatorOnMobile = true,
+  iconOnly = false,
+  showSummary = true
 }) => {
   if (totalPages <= 1 && !alwaysShow) return null
 
   const from = total === 0 ? 0 : (page - 1) * perPage + 1
   const to = total != null ? Math.min(page * perPage, total) : null
-  const showing = pageLabel
-    ? `Page ${page} of ${totalPages}`
-    : total != null
-      ? `Showing ${from} - ${to} of ${total}`
-      : null
+  const showing = !showSummary
+    ? null
+    : pageLabel
+      ? `Page ${page} of ${totalPages}`
+      : total != null
+        ? `Showing ${from} - ${to} of ${total}`
+        : null
 
   return (
     <div
       className={`flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/10 ${
         showing
           ? (hidePageIndicatorOnMobile ? 'justify-end sm:justify-between' : 'justify-between')
-          : 'justify-center'
+          : (showSummary ? 'justify-center' : 'justify-end')
       } ${className}`}
     >
       {showing && (
@@ -49,10 +53,11 @@ const Pagination = ({
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
+          aria-label='Previous page'
           className='px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
         >
           <ChevronLeft className='w-3.5 h-3.5' />
-          Prev
+          {!iconOnly && 'Prev'}
         </button>
         {getPageItems(page, totalPages).map((item, i) =>
           item === '...' ? (
@@ -76,9 +81,10 @@ const Pagination = ({
         <button
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
+          aria-label='Next page'
           className='px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
         >
-          Next
+          {!iconOnly && 'Next'}
           <ChevronRight className='w-3.5 h-3.5' />
         </button>
       </div>

@@ -19,7 +19,7 @@ import { confirmCreate, confirmUpdate } from '../utils/crudConfirm'
 import { sanitizePhoneInput, blockPhoneKeys } from '../utils/validation'
 import { SkeletonBHWPage } from '../components/Skeleton'
 import Pagination from '../components/Pagination'
-import { getStatusColor } from '../utils/helpers'
+import { getStatusColor, sortByName } from '../utils/helpers'
 
 const positionPresets = [
   { label: 'Barangay Health Worker', type: 'BHW', accountRole: 'BHW Worker' },
@@ -271,14 +271,14 @@ const BHW = () => {
 
   const positions = [...new Set(bhws.map(b => b.position).filter(Boolean))].sort()
 
-  const filteredBHWs = bhws.filter(bhw => {
+  const filteredBHWs = sortByName(bhws.filter(bhw => {
     const matchesSearch = !searchTerm || bhw.name?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.position?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.assignedPurok?.toLowerCase().includes(searchTerm.toLowerCase()) || focusGroupLabel(bhw.assignedFocusGroup)?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.username?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.email?.toLowerCase().includes(searchTerm.toLowerCase())
     if (!matchesSearch) return false
     if (filterPosition !== 'all' && bhw.position !== filterPosition) return false
     if (filterStatus !== 'all' && bhw.status !== filterStatus) return false
     if (filterGroup !== 'all' && (bhw.assignedFocusGroup || '') !== filterGroup) return false
     return true
-  })
+  }))
 
   const hasActiveFilters = filterPosition !== 'all' || filterStatus !== 'all' || filterGroup !== 'all' || searchTerm !== ''
 

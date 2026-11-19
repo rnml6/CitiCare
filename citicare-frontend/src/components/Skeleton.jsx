@@ -73,7 +73,7 @@ export const SkeletonNotificationList = ({ count = 4, variant = 'dropdown' }) =>
 // Dashboard stat cards (mirrors StatCard: gradient icon box + uppercase label + big value)
 export const SkeletonStatCards = ({ count = 4, scroll = false }) => {
   return (
-    <div className={scroll ? 'dashboard-stat-scroll flex flex-nowrap gap-4 overflow-hidden pb-3 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0' : 'grid grid-cols-2 lg:grid-cols-4 gap-4'}>
+    <div className={scroll ? 'dashboard-stat-scroll flex flex-nowrap gap-4 touch-pan-x overscroll-x-contain overflow-x-auto pb-3 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0' : 'grid grid-cols-2 lg:grid-cols-4 gap-4'}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className={`stat-card ${scroll ? 'w-[11rem] shrink-0 lg:w-auto' : ''}`}>
           <Skeleton className='w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0' />
@@ -872,12 +872,52 @@ const SkeletonFilterRow = ({ groups = [{ label: 'Filter:', count: 5 }], mobileSe
   )
 }
 
-// Residents page skeleton (header w/ Add Resident, search, single-row
-// Purok dropdown + Risk x5 + Focus Group x7 pills, resident rows, pagination)
+// Priority Residents sidebar (mirrors PriorityResidentsSidebar: header + count
+// pill, compact resident rows with risk badge, right-aligned pagination).
+export const SkeletonPrioritySidebar = ({ count = 7 }) => {
+  return (
+    <aside className='glass-card !p-4'>
+      <div className='flex items-start justify-between gap-2'>
+        <div className='min-w-0 space-y-1.5'>
+          <Skeleton className='h-4 w-32' />
+          <Skeleton className='h-3 w-44 max-w-full' />
+        </div>
+        <Skeleton className='h-5 w-8 rounded-full shrink-0' />
+      </div>
+      <div className='mt-3 space-y-2'>
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className='rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5'
+          >
+            <div className='flex items-start justify-between gap-2'>
+              <div className='min-w-0 flex-1 space-y-1.5'>
+                <Skeleton className='h-4 w-32 max-w-full' />
+                <Skeleton className='h-3 w-24 max-w-full' />
+              </div>
+              <Skeleton className='h-5 w-16 rounded-full shrink-0' />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className='mt-3 pt-2 border-t border-white/10 flex items-center justify-end gap-1.5'>
+        <Skeleton className='h-7 w-8 rounded-lg' />
+        <Skeleton className='h-7 w-8 rounded-lg' />
+      </div>
+    </aside>
+  )
+}
+
+// Residents page skeleton (header w/ Add Resident, risk summary cards
+// (desktop), search, Purok dropdown + Risk x5 + Focus Group x7 pills,
+// resident rows + Priority Residents sidebar on desktop, pagination)
 export const SkeletonResidentsPage = ({ count = 6 }) => {
   return (
     <div className='space-y-4 sm:space-y-6 animate-fade-in'>
       <SkeletonListHeader titleWidth='w-44' actions={1} />
+      <div className='hidden xl:block'>
+        <SkeletonStatCards count={4} />
+      </div>
       <div className='space-y-3'>
         <SkeletonSearchRow />
         <SkeletonFilterRow
@@ -889,8 +929,15 @@ export const SkeletonResidentsPage = ({ count = 6 }) => {
           ]}
         />
       </div>
-      <SkeletonResidentRow count={count} />
-      <SkeletonPagination />
+      <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start'>
+        <div className='min-w-0 space-y-4'>
+          <SkeletonResidentRow count={count} />
+          <SkeletonPagination />
+        </div>
+        <div className='hidden xl:block'>
+          <SkeletonPrioritySidebar />
+        </div>
+      </div>
     </div>
   )
 }
@@ -941,14 +988,17 @@ export const SkeletonMedicinesPage = ({ count = 6 }) => {
   )
 }
 
-// Schedules page skeleton (header w/ New Schedule, search, Scope x4 + Status
-// x5 chip rows + List/Calendar toggle, schedule list OR calendar grid,
-// pagination). `view` must match the expected tab content: 'list' mirrors the
-// schedule cards, 'calendar' mirrors the month grid.
+// Schedules page skeleton (header w/ New Schedule, status summary cards
+// (desktop), search, Scope x4 + Status x5 chip rows + List/Calendar toggle,
+// schedule list OR calendar grid, pagination). `view` must match the expected
+// tab content: 'list' mirrors the schedule cards, 'calendar' mirrors the grid.
 export const SkeletonSchedulesPage = ({ count = 5, view = 'list' }) => {
   return (
     <div className='space-y-4 sm:space-y-6 animate-fade-in'>
       <SkeletonListHeader titleWidth='w-32' countWidth='w-28' actions={1} />
+      <div className='hidden xl:block'>
+        <SkeletonStatCards count={4} />
+      </div>
       <div className='space-y-3'>
         <div className='flex items-end gap-2 sm:block'>
           <Skeleton className='h-11 min-w-0 flex-1 rounded-xl' />
@@ -1732,7 +1782,7 @@ export const SkeletonRiskMapTab = () => {
 // Total + Critical + High + Moderate + Low StatCards)
 const SkeletonWorkerStats = ({ scroll = false }) => {
   return (
-    <div className={scroll ? 'dashboard-stat-scroll flex flex-nowrap gap-3 overflow-hidden pb-3 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0' : 'grid grid-cols-2 lg:grid-cols-5 gap-3'}>
+    <div className={scroll ? 'dashboard-stat-scroll flex flex-nowrap gap-3 touch-pan-x overscroll-x-contain overflow-x-auto pb-3 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0' : 'grid grid-cols-2 lg:grid-cols-5 gap-3'}>
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className={`stat-card ${scroll ? 'w-[10.5rem] shrink-0 lg:w-auto' : ''}`}>
           <Skeleton className='w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0' />
@@ -1759,21 +1809,25 @@ export const SkeletonMyPurokPage = () => {
       <div className='glass-card space-y-4'>
         <Skeleton className='h-5 w-48' />
         <Skeleton className='h-11 w-full rounded-xl' />
-        <div className='space-y-3'>
-          <div className='flex gap-4 border-b border-white/10 pb-3'>
+        {/* Mirrors the real page: a min-width table inside a horizontally
+            scrollable wrapper, so phones keep the same shape. */}
+        <div className='overflow-x-auto mt-3'>
+          <div className='min-w-[560px] space-y-3'>
+            <div className='flex gap-4 border-b border-white/10 pb-3'>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={`h-${i}`} className='h-3 flex-1' />
+              ))}
+            </div>
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={`h-${i}`} className='h-3 flex-1' />
+              <div key={i} className='flex gap-4 items-center'>
+                <Skeleton className='h-4 w-40 flex-none' />
+                <Skeleton className='h-3 w-10 flex-1' />
+                <Skeleton className='h-5 w-20 rounded-full flex-none' />
+                <Skeleton className='h-3 w-10 flex-1' />
+                <Skeleton className='h-3 w-28 flex-1' />
+              </div>
             ))}
           </div>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className='flex gap-4 items-center'>
-              <Skeleton className='h-4 w-40 flex-none' />
-              <Skeleton className='h-3 w-10 flex-1' />
-              <Skeleton className='h-5 w-20 rounded-full flex-none' />
-              <Skeleton className='h-3 w-10 flex-1' />
-              <Skeleton className='h-3 w-28 flex-1' />
-            </div>
-          ))}
         </div>
         <SkeletonPagination />
       </div>
@@ -1782,9 +1836,8 @@ export const SkeletonMyPurokPage = () => {
 }
 
 // MyResidents page (mirrors MyResidents: title + count + Add Resident,
-// 5 risk StatCards, search + Handled-Purok/Focus toggle, Risk pills,
-// resident GlassCard rows with name/meta + focus pills + risk badge +
-// edit/delete + pagination)
+// risk StatCards, search + Handled-Purok/Focus toggle, Risk pills, resident
+// GlassCard rows + Priority Residents sidebar on desktop, pagination)
 export const SkeletonMyResidentsPage = ({ count = 6 }) => {
   return (
     <div className='space-y-4 sm:space-y-6 animate-fade-in'>
@@ -1817,37 +1870,44 @@ export const SkeletonMyResidentsPage = ({ count = 6 }) => {
           <Skeleton key={i} className='h-8 w-20 rounded-md' />
         ))}
       </div>
-      <div className='grid grid-cols-1 gap-3'>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className='glass-card'>
-            <div className='flex flex-col sm:flex-row sm:items-center gap-3'>
-              <div className='min-w-0 sm:flex-1 space-y-2'>
-                <Skeleton className='h-5 w-48' />
-                <Skeleton className='h-3.5 w-56 max-w-full' />
-              </div>
-              <div className='flex items-center gap-2 shrink-0'>
-                <div className='flex flex-wrap gap-1'>
-                  <Skeleton className='h-5 w-16 rounded-full' />
-                  <Skeleton className='h-5 w-20 rounded-full' />
+      <div className='grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start'>
+        <div className='min-w-0 space-y-4'>
+          <div className='grid grid-cols-1 gap-3'>
+            {Array.from({ length: count }).map((_, i) => (
+              <div key={i} className='glass-card'>
+                <div className='flex flex-col sm:flex-row sm:items-center gap-3'>
+                  <div className='min-w-0 sm:flex-1 space-y-2'>
+                    <Skeleton className='h-5 w-48' />
+                    <Skeleton className='h-3.5 w-56 max-w-full' />
+                  </div>
+                  <div className='flex items-center gap-2 shrink-0'>
+                    <div className='flex flex-wrap gap-1'>
+                      <Skeleton className='h-5 w-16 rounded-full' />
+                      <Skeleton className='h-5 w-20 rounded-full' />
+                    </div>
+                    <Skeleton className='h-6 w-20 rounded-md' />
+                    <div className='flex items-center gap-1'>
+                      <Skeleton className='w-7 h-7 rounded-lg' />
+                      <Skeleton className='w-7 h-7 rounded-lg' />
+                    </div>
+                  </div>
                 </div>
-                <Skeleton className='h-6 w-20 rounded-md' />
-                <div className='flex items-center gap-1'>
-                  <Skeleton className='w-7 h-7 rounded-lg' />
-                  <Skeleton className='w-7 h-7 rounded-lg' />
-                </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+          <SkeletonPagination />
+        </div>
+        <div className='hidden xl:block'>
+          <SkeletonPrioritySidebar />
+        </div>
       </div>
-      <SkeletonPagination />
     </div>
   )
 }
 
 // MySchedules page (mirrors MySchedules: title + count + New Schedule,
-// Assigned/Completed/Missed/Completion StatCards, search, Scope x4 +
-// Status x5 pills + List/Calendar toggle, schedule list rows + pagination)
+// Assigned/Missed/Cancelled/Completion StatCards, search, Scope x4 + Status x5
+// pills + List/Calendar toggle, schedule list rows + pagination)
 export const SkeletonMySchedulesPage = ({ count = 5 }) => {
   return (
     <div className='space-y-4 sm:space-y-6 animate-fade-in'>
@@ -1858,7 +1918,7 @@ export const SkeletonMySchedulesPage = ({ count = 5 }) => {
         </div>
         <Skeleton className='h-11 w-28 sm:w-36 rounded-xl ml-auto' />
       </div>
-      <SkeletonStatCards count={4} />
+      <SkeletonStatCards count={4} scroll />
       <div className='space-y-3'>
         <div className='flex items-end gap-2 sm:block'>
           <Skeleton className='h-11 min-w-0 flex-1 rounded-xl' />

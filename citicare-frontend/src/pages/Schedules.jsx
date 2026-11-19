@@ -5,7 +5,7 @@ import {
   Calendar, Clock, MapPin, User, Plus, Pencil, Trash2, Users,
   Star, Building2, Search, ChevronRight, List, CalendarDays, Check,
   Phone, FileText, Stethoscope, Heart, ChevronDown, Eye, EyeOff,
-  X, ArrowLeft, Save, Loader2
+  X, ArrowLeft, Save, Loader2, AlertTriangle, XCircle
 } from 'lucide-react'
 import { scheduleApi } from '../api/scheduleApi'
 import { residentApi } from '../api/residentApi'
@@ -18,11 +18,12 @@ import GlassSelect from '../components/GlassSelect'
 import Modal from '../components/Modal'
 import WorkerNamePicker from '../components/WorkerNamePicker'
 import CalendarView from '../components/CalendarView'
+import StatCard from '../components/StatCard'
 import { SkeletonSchedulesPage, SkeletonScheduleDetailModal, SkeletonDayModalList } from '../components/Skeleton'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/ConfirmModal'
 import ResidentDetail from './ResidentDetail'
-import { formatTime, getStatusColor, formatAge } from '../utils/helpers'
+import { formatTime, getStatusColor, formatAge, sortSchedules } from '../utils/helpers'
 import { dialog } from '../context/DialogContext'
 import { confirmCreate, confirmMutation, confirmUpdate } from '../utils/crudConfirm'
 import { sanitizePhoneInput, blockPhoneKeys, blockIntegerKeys } from '../utils/validation'
@@ -239,8 +240,19 @@ const Schedules = () => {
       const search = searchTerm.toLowerCase()
       filtered = filtered.filter(s => s.residentName?.toLowerCase().includes(search) || s.type?.toLowerCase().includes(search) || s.programName?.toLowerCase().includes(search) || s.purokName?.toLowerCase().includes(search) || s.purpose?.toLowerCase().includes(search) || s.leadBhwName?.toLowerCase().includes(search))
     }
-    return filtered.sort((a, b) => new Date(a.date) - new Date(b.date))
+    return sortSchedules(filtered)
   }, [schedules, scopeFilter, statusFilter, searchTerm])
+
+  // Status summary cards (all schedules, independent of the filters below).
+  const scheduleCounts = useMemo(() => schedules.reduce((counts, schedule) => {
+    const status = String(schedule.status || '').toLowerCase()
+    counts.total += 1
+    if (status === 'scheduled') counts.scheduled += 1
+    else if (status === 'completed') counts.completed += 1
+    else if (status === 'missed') counts.missed += 1
+    else if (status === 'cancelled') counts.cancelled += 1
+    return counts
+  }, { total: 0, scheduled: 0, completed: 0, missed: 0, cancelled: 0 }), [schedules])
 
   // Resident currently picked in the New/Edit individual form and the
   // schedule types they are eligible for (prenatal → pregnant only,
@@ -667,6 +679,14 @@ const Schedules = () => {
         <GlassButton size='lg' className='ml-auto' icon={Plus} title='New Schedule' onClick={openAddModal}>
           <span className='hidden sm:inline'>New Schedule</span>
         </GlassButton>
+      </div>
+
+      {/* Status summary: desktop only — mobile/tablet layout stays as-is */}
+      <div className='hidden xl:grid xl:grid-cols-4 gap-3'>
+        <StatCard label='Total' value={scheduleCounts.total} icon={CalendarDays} color='purple' />
+        <StatCard label='Scheduled' value={scheduleCounts.scheduled} icon={Clock} color='blue' />
+        <StatCard label='Missed' value={scheduleCounts.missed} icon={AlertTriangle} color='orange' />
+        <StatCard label='Cancelled' value={scheduleCounts.cancelled} icon={XCircle} color='red' />
       </div>
 
       <div className='space-y-3'>

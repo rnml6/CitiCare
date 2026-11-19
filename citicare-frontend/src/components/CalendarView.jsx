@@ -72,19 +72,17 @@ const CalendarView = ({
 
   return (
     <div className='responsive-calendar'>
-      {/* Header */}
-      <div className='flex items-center justify-between mb-6'>
-        <div className='flex items-center gap-3'>
+      {/* Header — month centered on desktop only, original layout on mobile */}
+      <div className='flex items-center justify-between mb-6 xl:grid xl:grid-cols-[1fr_auto_1fr]'>
+        <div className='hidden xl:block' />
+        <div className='flex items-center gap-3 xl:justify-center'>
           <button
             onClick={onPrevMonth}
             className='p-2 hover:bg-white/10 rounded-lg transition-colors'
           >
             <ChevronLeft className='w-5 h-5 text-white/85' />
           </button>
-          <h2
-            className='text-lg font-semibold text-white'
-
-          >
+          <h2 className='text-lg font-semibold text-white xl:text-center xl:min-w-[9.5rem]'>
             {monthYear}
           </h2>
           <button
@@ -94,14 +92,16 @@ const CalendarView = ({
             <ChevronRight className='w-5 h-5 text-white/85' />
           </button>
         </div>
-        {showToday && (
-          <button
-            onClick={onToday}
-            className='px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs sm:text-sm text-white/75 transition-colors border border-white/20'
-          >
-            Today
-          </button>
-        )}
+        <div className='justify-self-end'>
+          {showToday && (
+            <button
+              onClick={onToday}
+              className='px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs sm:text-sm text-white/75 transition-colors border border-white/20'
+            >
+              Today
+            </button>
+          )}
+        </div>
       </div>
 
       <div className='calendar-scroll'>

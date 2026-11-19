@@ -18,6 +18,7 @@ import {
 } from '../utils/medicineInterval'
 import { blockIntegerKeys } from '../utils/validation'
 import { focusFirstError } from '../utils/focusInvalidField'
+import { sortByName } from '../utils/helpers'
 
 const Medicines = () => {
   const [medicines, setMedicines] = useState([])
@@ -249,7 +250,7 @@ const Medicines = () => {
   ]
 
   // Filter medicines (client-side, so switching filters never reloads the page)
-  const filteredMedicines = medicines.filter(medicine => {
+  const filteredMedicines = sortByName(medicines.filter(medicine => {
     if (
       searchTerm &&
       !medicine.medicine_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -266,7 +267,7 @@ const Medicines = () => {
       return false
     }
     return true
-  })
+  }), 'medicine_name')
 
   const hasActiveFilters = filterCategory !== 'all' || filterTargetGroup !== 'all' || searchTerm !== ''
 

@@ -100,6 +100,7 @@ export const getStatusColor = (status) => {
     case 'Completed': return 'badge-completed';
     case 'Scheduled': return 'badge-scheduled';
     case 'Missed': return 'badge-missed';
+    case 'Cancelled': return 'badge-cancelled';
     case 'Active': return 'badge-active';
     case 'Inactive': return 'badge-inactive';
     default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
@@ -148,4 +149,54 @@ export const focusGroupsMatch = (groups, filter) => {
     return key === target || focusGroupLabel(g).toLowerCase() === focusGroupLabel(filter).toLowerCase()
       || focusGroupLabel(key).toLowerCase() === focusGroupLabel(target).toLowerCase();
   });
+};
+
+// Alphabetical order for resident lists. `recentIds` (newest first) are
+// pinned to the top so a resident added from the current page is immediately
+// visible; after a reload `recentIds` is empty and the plain alphabetical
+// order is used again.
+export const sortResidentsAlphabetically = (residents, recentIds = []) => {
+  const rank = new Map(recentIds.map((id, index) => [String(id), index]));
+  return [...(residents || [])].sort((a, b) => {
+    const aRank = rank.get(String(a.id));
+    const bRank = rank.get(String(b.id));
+    if (aRank !== undefined || bRank !== undefined) {
+      if (aRank === undefined) return 1;
+      if (bRank === undefined) return -1;
+      return aRank - bRank;
+    }
+    return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+      || String(a.id ?? '').localeCompare(String(b.id ?? ''));
+  });
+};
+
+// Plain alphabetical order by name — used by non-resident lists such as the
+// Health Workers and Medicines cards. `key` lets callers point at a different
+// name field (e.g. medicines use `medicine_name`).
+export const sortByName = (items, key = 'name') => {
+  const valueOf = item => String(item?.[key] ?? item?.name ?? '');
+  return [...(items || [])].sort((a, b) =>
+    valueOf(a).localeCompare(valueOf(b), undefined, { sensitivity: 'base' })
+    || String(a?.id ?? '').localeCompare(String(b?.id ?? '')));
+};
+
+// Natural alphabetical order — keeps numbered names in human order
+// (Purok 1 → Purok 2 → ... → Purok 10 → Purok 12).
+export const sortByNameNatural = (items, key = 'name') => {
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const valueOf = item => String(item?.[key] ?? item?.name ?? '');
+  return [...(items || [])].sort((a, b) =>
+    collator.compare(valueOf(a), valueOf(b))
+    || String(a?.id ?? '').localeCompare(String(b?.id ?? '')));
+};
+
+// Schedules list order: still-"Scheduled" schedules come first, then the rest,
+// each group sorted by date ascending (soonest date first, time as tiebreaker).
+export const sortSchedules = (items) => {
+  const rank = schedule =>
+    String(schedule?.status || '').toLowerCase() === 'scheduled' ? 0 : 1;
+  return [...(items || [])].sort((a, b) =>
+    rank(a) - rank(b)
+    || (new Date(a?.date || 0) - new Date(b?.date || 0))
+    || String(a?.time || '').localeCompare(String(b?.time || '')));
 };

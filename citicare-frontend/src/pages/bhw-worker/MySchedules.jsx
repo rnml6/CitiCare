@@ -7,7 +7,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Calendar, Clock, MapPin, User, Plus, Pencil, Trash2,
-  Building2, Search, List, CalendarDays, X, Stethoscope, Check
+  Building2, Search, List, CalendarDays, X, Stethoscope, Check,
+  AlertTriangle, XCircle
 } from 'lucide-react'
 import { scheduleApi } from '../../api/scheduleApi'
 import { residentApi } from '../../api/residentApi'
@@ -23,7 +24,7 @@ import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import CalendarView from '../../components/CalendarView'
 import ResidentDetail from '../ResidentDetail'
-import { formatTime, getStatusColor, formatAge } from '../../utils/helpers'
+import { formatTime, getStatusColor, formatAge, sortSchedules } from '../../utils/helpers'
 import { SkeletonMySchedulesPage, SkeletonScheduleDetailModal } from '../../components/Skeleton'
 import { dialog } from '../../context/DialogContext'
 import { confirmCreate, confirmMutation, confirmUpdate } from '../../utils/crudConfirm'
@@ -563,8 +564,9 @@ const MySchedules = () => {
     }
   }
 
-  // Same filter pipeline as admin: scope + status + search, sorted by date.
-  const filtered = schedules
+  // Same filter pipeline as admin: scope + status + search, then "Scheduled"
+  // first and each status group sorted by the date closest to today.
+  const filtered = sortSchedules(schedules
     .filter(s => scopeFilter === 'all' || s.scope === scopeFilter)
     .filter(s => statusFilter === 'all' || s.status === statusFilter)
     .filter(s => {
@@ -573,8 +575,7 @@ const MySchedules = () => {
       return s.residentName?.toLowerCase().includes(q) || s.type?.toLowerCase().includes(q) ||
         s.programName?.toLowerCase().includes(q) || s.purokName?.toLowerCase().includes(q) ||
         s.purpose?.toLowerCase().includes(q)
-    })
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    }))
   const hasActiveFilters = scopeFilter !== 'all' || statusFilter !== 'all' || searchTerm !== ''
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
@@ -627,11 +628,15 @@ const MySchedules = () => {
     return null
   }
 
-  // Assignment stats for the Schedules tab — computed from the BHW's own
+  // Status summary cards for the Schedules tab — computed from the BHW's own
   // schedules so they stay in sync with the list below.
-  const totalAssigned = schedules.length
+  const totalSchedules = schedules.length
+  const scheduledCount = schedules.filter(s => s.status === 'Scheduled').length
   const completedCount = schedules.filter(s => s.status === 'Completed').length
   const missedCount = schedules.filter(s => s.status === 'Missed').length
+  const cancelledCount = schedules.filter(s => s.status === 'Cancelled').length
+  // Card set used by the tablet/mobile layout (unchanged from before).
+  const totalAssigned = totalSchedules
   const completionRate = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 0
 
   if (loading) {
@@ -650,6 +655,7 @@ const MySchedules = () => {
         </GlassButton>
       </div>
 
+          {/* Summary cards — same set on desktop and on tablet/mobile (scrollable row below lg) */}
           <div className='relative min-w-0'>
             <div
               onScroll={event => {
@@ -662,10 +668,10 @@ const MySchedules = () => {
               }}
               className='dashboard-stat-scroll flex flex-nowrap touch-pan-x overscroll-x-contain lg:grid lg:grid-cols-4 gap-3 overflow-x-auto pb-3 lg:overflow-visible lg:pb-0'
             >
-              <StatCard label='Assigned' value={totalAssigned} icon={Calendar} color='blue' />
-              <StatCard label='Completed' value={completedCount} icon={Check} color='green' />
-              <StatCard label='Missed' value={missedCount} icon={X} color='red' />
-              <StatCard label='Completion' value={`${completionRate}%`} icon={Clock} color='purple' />
+              <StatCard label='Assigned' value={scheduledCount} icon={Calendar} color='blue' />
+              <StatCard label='Missed' value={missedCount} icon={AlertTriangle} color='orange' />
+              <StatCard label='Cancelled' value={cancelledCount} icon={XCircle} color='red' />
+              <StatCard label='Completion' value={`${completionRate}%`} icon={Check} color='purple' />
             </div>
             <div className='dashboard-stat-scroll-indicator lg:hidden' aria-hidden='true'>
               <span ref={statScrollIndicatorRef} />

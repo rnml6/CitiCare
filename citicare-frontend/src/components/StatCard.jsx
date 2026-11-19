@@ -5,6 +5,7 @@ const StatCard = ({ label, value, icon: Icon, color = 'blue' }) => {
     purple: 'from-purple-400 to-purple-600',
     red: 'from-red-400 to-red-600',
     orange: 'from-orange-400 to-orange-600',
+    yellow: 'from-yellow-400 to-yellow-600',
   };
 
   return (
