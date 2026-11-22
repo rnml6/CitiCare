@@ -27,6 +27,7 @@ import { getRiskColor, getRiskScoreColor, formatDate, focusGroupLabel, focusGrou
 import {
   GENDER_OPTIONS,
   validateResidentFields,
+  residentSaveErrorMessage,
   hasErrors,
   sanitizePhoneInput,
   blockPhoneKeys
@@ -291,7 +292,9 @@ const Residents = () => {
       closeModal()
       fetchResidents()
       dialog.toast(editingResident ? 'Resident updated successfully.' : 'Resident added successfully.', 'success')
-    } catch (error) { dialog.error(error.response?.data?.message || 'Failed to save', 'Unable to save resident'); }
+    } catch (error) {
+      dialog.error(residentSaveErrorMessage(error, 'Failed to save resident'), 'Unable to save resident')
+    }
     finally { setSaving(false) }
   }
 
@@ -529,10 +532,10 @@ const Residents = () => {
           </div>
           <div className='grid grid-cols-2 gap-3'>
             <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
-            <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
+            <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} allowCustom={false} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={formData.contactNumber} onChange={e => handleFormChange('contactNumber', e.target.value)} error={formErrors.contactNumber} placeholder='Enter contact number' />
-          <GlassSelect label='Purok' value={formData.purokId} onChange={v => handleFormChange('purokId', v)} allowCustom allowClear placeholder='Select purok' options={[...[...puroks].sort((a, b) => a.name?.localeCompare(b.name)).map(p => ({ value: String(p.id), label: p.name }))]} />
+          <GlassSelect label='Purok' value={formData.purokId} onChange={v => handleFormChange('purokId', v)} allowCustom={false} allowClear placeholder='Select purok' options={[...[...puroks].sort((a, b) => a.name?.localeCompare(b.name)).map(p => ({ value: String(p.id), label: p.name }))]} />
 <GlassInput label='Last Checkup' type='date' value={formData.lastCheckup} onChange={e => handleFormChange('lastCheckup', e.target.value)} error={formErrors.lastCheckup} />
             {isInfantResident && (
               <div className='grid grid-cols-2 gap-3'>
@@ -588,10 +591,10 @@ const Residents = () => {
           </div>
           <div className='grid grid-cols-2 gap-3'>
             <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
-            <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
+            <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} allowCustom={false} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={formData.contactNumber} onChange={e => handleFormChange('contactNumber', e.target.value)} error={formErrors.contactNumber} placeholder='Enter contact number' />
-          <GlassSelect label='Purok' value={formData.purokId} onChange={v => handleFormChange('purokId', v)} allowCustom allowClear placeholder='Select purok' options={[...[...puroks].sort((a, b) => a.name?.localeCompare(b.name)).map(p => ({ value: String(p.id), label: p.name }))]} />
+          <GlassSelect label='Purok' value={formData.purokId} onChange={v => handleFormChange('purokId', v)} allowCustom={false} allowClear placeholder='Select purok' options={[...[...puroks].sort((a, b) => a.name?.localeCompare(b.name)).map(p => ({ value: String(p.id), label: p.name }))]} />
           <GlassInput label='Last Checkup' type='date' value={formData.lastCheckup} onChange={e => handleFormChange('lastCheckup', e.target.value)} error={formErrors.lastCheckup} />
             {isInfantResident && (
               <div className='grid grid-cols-2 gap-3'>

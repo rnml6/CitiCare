@@ -170,3 +170,11 @@ export const validateResidentFields = (data = {}) => {
 }
 
 export const hasErrors = (errors) => Object.keys(errors || {}).length > 0
+
+export const residentSaveErrorMessage = (error, fallback) => {
+  const response = error?.response?.data
+  const messages = Object.values(response?.errors || {}).filter(
+    message => typeof message === 'string' && message.trim()
+  )
+  return messages.length ? messages.join('\n') : response?.message || fallback
+}

@@ -22,7 +22,7 @@ import { SkeletonMyResidentsPage } from '../../components/Skeleton'
 import { getRiskColor, formatAge, formatAgeLong, sortResidentsAlphabetically } from '../../utils/helpers'
 import { dialog } from '../../context/DialogContext'
 import { confirmCreate, confirmUpdate } from '../../utils/crudConfirm'
-import { GENDERS, GENDER_OPTIONS, sanitizePhoneInput, blockPhoneKeys } from '../../utils/validation'
+import { GENDERS, GENDER_OPTIONS, sanitizePhoneInput, blockPhoneKeys, residentSaveErrorMessage } from '../../utils/validation'
 import { focusFirstError } from '../../utils/focusInvalidField'
 
 const FOCUS_LABELS = { pregnant: 'Pregnant', senior: 'Senior Citizen', infant: 'Infants' }
@@ -237,7 +237,7 @@ const MyResidents = () => {
       fetchMine()
       dialog.toast('Resident added successfully.', 'success')
     } catch (err) {
-      dialog.error(err.response?.data?.message || 'Failed to add resident', 'Unable to add resident')
+      dialog.error(residentSaveErrorMessage(err, 'Failed to add resident'), 'Unable to add resident')
     } finally {
       setSaving(false)
     }
@@ -677,7 +677,7 @@ const MyResidents = () => {
           </div>
           <div className='grid grid-cols-2 gap-3'>
             <GlassSelect label='Gender *' name='gender' error={addErrors.gender} value={addForm.gender} onChange={v => handleAddFormChange('gender', v)} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
-            <GlassSelect label='Civil Status' value={addForm.civilStatus} onChange={v => handleAddFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
+            <GlassSelect label='Civil Status' value={addForm.civilStatus} onChange={v => handleAddFormChange('civilStatus', v)} allowCustom={false} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={addForm.contactNumber} onChange={e => handleAddFormChange('contactNumber', e.target.value)} placeholder='Enter contact number' />
           <GlassInput label='Last Checkup' type='date' value={addForm.lastCheckup} onChange={e => handleAddFormChange('lastCheckup', e.target.value)} />
@@ -742,7 +742,7 @@ const MyResidents = () => {
           </div>
           <div className='grid grid-cols-2 gap-3'>
             <GlassSelect label='Gender *' name='gender' error={editErrors.gender} value={editForm.gender} onChange={v => updateEditField('gender', v)} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
-            <GlassSelect label='Civil Status' value={editForm.civilStatus} onChange={v => setEditForm({ ...editForm, civilStatus: v })} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
+            <GlassSelect label='Civil Status' value={editForm.civilStatus} onChange={v => setEditForm({ ...editForm, civilStatus: v })} allowCustom={false} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={editForm.contactNumber} onChange={e => updateEditField('contactNumber', sanitizePhoneInput(e.target.value))} placeholder='Enter contact number' />
           <GlassInput label='Last Checkup' type='date' value={editForm.lastCheckup} onChange={e => setEditForm({ ...editForm, lastCheckup: e.target.value })} />
