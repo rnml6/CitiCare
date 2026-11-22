@@ -1379,7 +1379,7 @@ export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
           <SkeletonPagination />
         </div>
         {/* Risk Areas — title + severity badge + description */}
-        <div className='min-w-0 border-y border-white/10 py-6 space-y-3'>
+        {!isBHWWorker && <div className='min-w-0 border-y border-white/10 py-6 space-y-3'>
           <Skeleton className='h-4 w-32' />
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className='rounded-xl border border-white/10 bg-white/[0.04] p-5 space-y-2'>
@@ -1392,7 +1392,7 @@ export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
             </div>
           ))}
           <SkeletonPagination />
-        </div>
+        </div>}
       </div>
       {/* Health Intervention Recommendations — header, action, meta rows */}
       <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
@@ -1422,7 +1422,7 @@ export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
         <SkeletonPagination />
       </div>
       {/* Health Program Recommendations — numbered program cards */}
-      {!isBHWWorker && <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
+      <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
         <Skeleton className='h-4 w-72 max-w-full' />
         <Skeleton className='h-3 w-4/5' />
         <div className='grid grid-cols-1 gap-5'>
@@ -1451,7 +1451,7 @@ export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
           ))}
         </div>
         <SkeletonPagination />
-      </div>}
+      </div>
       {/* Priority Residents — name + urgency, meta, condition chips, next step */}
       <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
         <Skeleton className='h-4 w-44' />

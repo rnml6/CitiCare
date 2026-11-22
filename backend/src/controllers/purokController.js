@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { fetchAllRows } from '../utils/paginate.js';
 import { getResidentRiskSnapshot } from '../utils/residentSnapshot.js';
 import { getRiskClassification } from '../utils/riskCalculator.js';
 import {
@@ -23,36 +24,32 @@ export const getAllPuroks = async (req, res) => {
         .select('assigned_purok_id')
         .eq('bhw_id', req.user.bhwId)
         .maybeSingle();
-      assignedOnly = me?.assigned_purok_id ?? req.user?.assignedPurokId ?? null;
+      assignedOnly = me?.assigned_purok_id ?? null;
       if (!assignedOnly) return res.json({ success: true, data: [] });
     }
-    let query = supabase
-      .from('puroks')
-      .select('*')
-      .order('purok_id', { ascending: false });
-    if (assignedOnly) query = query.eq('purok_id', assignedOnly);
-    const { data, error } = await query;
+    const data = await fetchAllRows(() => {
+      const query = supabase
+        .from('puroks')
+        .select('*')
+        .order('purok_id', { ascending: false });
+      return assignedOnly ? query.eq('purok_id', assignedOnly) : query;
+    });
 
-    if (error) throw error;
-
-    // One shared snapshot of the residents table (also used by the dashboard)
+    // Fetch the current resident risk data
     // plus the two small lookup tables, all in parallel. Previously the Purok
     // tab separately re-downloaded the full resident list, BHW list and
     // schedule list on the client just to show two badges per card.
     const worker = req.user?.role === 'BHW Worker';
-    const [allResidents, bhwRes, scheduleRes] = await Promise.all([
+    const [allResidents, bhws, schedules] = await Promise.all([
       getResidentRiskSnapshot({
         worker,
         residentIds: req.user?.residentIds || [],
         purokId: assignedOnly,
-        userKey: req.user?.bhwId || req.user?.userId,
       }),
-      supabase
-        .from('bhws')
-        .select('bhw_id, name, assigned_purok_id, status, position, worker_type'),
-      supabase
-        .from('schedules')
-        .select('schedule_id, scope, purok_id, resident_id'),
+      fetchAllRows(() => supabase.from('bhws')
+        .select('bhw_id, name, assigned_purok_id, status, position, worker_type').order('bhw_id')),
+      fetchAllRows(() => supabase.from('schedules')
+        .select('schedule_id, scope, purok_id, resident_id').order('schedule_id')),
     ]);
 
     const byPurok = {};
@@ -71,7 +68,7 @@ export const getAllPuroks = async (req, res) => {
 
     // Active BHW Workers assigned to each purok (same predicate the UI used).
     const assignedByPurok = {};
-    for (const b of (bhwRes.data || [])) {
+    for (const b of bhws) {
       if (b.status && b.status !== 'Active') continue;
       const isBhw = b.position === 'Barangay Health Worker' || b.worker_type === 'BHW';
       if (!isBhw || b.assigned_purok_id == null) continue;
@@ -87,7 +84,7 @@ export const getAllPuroks = async (req, res) => {
       if (r.resident_id != null) residentPurok[String(r.resident_id)] = String(r.purok_id);
     }
     const scheduleCounts = {};
-    for (const s of (scheduleRes.data || [])) {
+    for (const s of schedules) {
       const linked = new Set();
       if (s.scope === 'barangay') {
         for (const p of (data || [])) linked.add(String(p.purok_id));
@@ -150,7 +147,7 @@ export const getMyPurok = async (req, res) => {
       .eq('bhw_id', req.user.bhwId)
       .maybeSingle();
     if (error) throw error;
-    const purokId = data?.assigned_purok_id ?? req.user?.assignedPurokId ?? null;
+    const purokId = data?.assigned_purok_id ?? null;
     if (!purokId) {
       return res.json({ success: true, data: null, message: 'No purok assigned to your account' });
     }
@@ -171,7 +168,7 @@ export const getPurokById = async (req, res) => {
         .select('assigned_purok_id')
         .eq('bhw_id', req.user.bhwId)
         .maybeSingle();
-      const assigned = me?.assigned_purok_id ?? req.user?.assignedPurokId ?? null;
+      const assigned = me?.assigned_purok_id ?? null;
       if (!assigned || String(assigned) !== String(id)) {
         return res.status(403).json({ success: false, message: 'You can only view your assigned purok' });
       }
@@ -188,7 +185,7 @@ export const getPurokById = async (req, res) => {
     }
 
     // Get residents with cached risk levels/scores
-    const { data: residents, error: residentError } = await supabase
+    const residents = await fetchAllRows(() => supabase
       .from('residents')
       .select(`
         resident_id,
@@ -204,9 +201,7 @@ export const getPurokById = async (req, res) => {
         risk_level
       `)
       .eq('purok_id', id)
-      .order('resident_id', { ascending: false });
-
-    if (residentError) throw residentError;
+      .order('resident_id', { ascending: false }));
 
     // Get BHW assigned to this purok
     const { data: bhw, error: bhwError } = await supabase

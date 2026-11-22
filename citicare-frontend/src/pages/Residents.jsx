@@ -1,4 +1,5 @@
 // pages/Residents.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -97,10 +98,10 @@ const Residents = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const fetchResidents = useCallback(async () => {
-    try { setLoading(true); const response = await residentApi.getAll(); if (response.data.success) setResidents(response.data.data) }
+  const fetchResidents = useCallback(async (background = false) => {
+    try { if (!background) setLoading(true); const response = await residentApi.getAll(); if (response.data.success) setResidents(response.data.data) }
     catch (error) { console.error('Error fetching residents:', error) }
-    finally { setLoading(false) }
+    finally { if (!background) setLoading(false) }
   }, [])
   const fetchPuroks = useCallback(async () => {
     try { const response = await purokApi.getAll(); if (response.data.success) setPuroks(response.data.data) }
@@ -112,6 +113,7 @@ const Residents = () => {
   }, [])
 
   useEffect(() => { fetchResidents(); fetchPuroks(); fetchMissedConsultations() }, [fetchResidents, fetchPuroks, fetchMissedConsultations])
+  useDataRefresh(() => Promise.all([fetchResidents(true), fetchPuroks(), fetchMissedConsultations()]), !loading)
 
   // Open detail modal when navigated here with viewResidentId (Dashboard/Purok flows) - modal only, no page
   useEffect(() => {

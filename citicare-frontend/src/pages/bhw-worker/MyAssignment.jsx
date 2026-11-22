@@ -1,6 +1,7 @@
 // pages/bhw-worker/MyAssignment.jsx
 // Assigned purok card + focus group card + own personal information
 // (view/edit name, contact number, email, username, password).
+import { useDataRefresh } from '../../utils/useDataRefresh'
 import { useState, useEffect } from 'react'
 import { User, Pencil, Save, X, Lock, Eye, EyeOff } from 'lucide-react'
 import { bhwApi } from '../../api/bhwApi'
@@ -32,27 +33,33 @@ const MyAssignment = () => {
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => { fetchMe() }, [])
+  useDataRefresh(() => fetchMe(true), !loading && !editing && !saving)
 
-  const fetchMe = async () => {
+  const fetchMe = async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const res = await bhwApi.getMe()
       if (res.data.success) {
         setProfile(res.data.data)
-        setForm({
-          name: res.data.data.name || '',
-          contactNumber: res.data.data.contactNumber || '',
-          email: res.data.data.email || '',
-          username: res.data.data.username || '',
-          password: '',
-          confirmPassword: ''
-        })
       }
     } catch (err) {
       console.error('My assignment error:', err)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
+  }
+
+  const startEditing = () => {
+    setErrors({})
+    setForm({
+      name: profile.name || '',
+      contactNumber: profile.contactNumber || '',
+      email: profile.email || '',
+      username: profile.username || '',
+      password: '',
+      confirmPassword: ''
+    })
+    setEditing(true)
   }
 
   const updateField = (name, value) => {
@@ -121,7 +128,7 @@ const MyAssignment = () => {
             <User className='w-5 h-5 text-blue-300' /> Personal Information
           </h2>
           {!editing && (
-            <GlassButton variant='secondary' icon={Pencil} title='Edit' aria-label='Edit profile' className='!bg-transparent !border-0' onClick={() => { setErrors({}); setEditing(true) }} />
+            <GlassButton variant='secondary' icon={Pencil} title='Edit' aria-label='Edit profile' className='!bg-transparent !border-0' onClick={startEditing} />
           )}
         </div>
 
@@ -165,7 +172,6 @@ const MyAssignment = () => {
                   setEditing(false)
                   setShowPassword(false)
                   setErrors({})
-                  setForm({ name: profile.name || '', contactNumber: profile.contactNumber || '', email: profile.email || '', username: profile.username || '', password: '', confirmPassword: '' })
                 }}
               >
                 Cancel

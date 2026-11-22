@@ -39,3 +39,29 @@ export const chunk = (items, size = 500) => {
   for (let i = 0; i < list.length; i += step) out.push(list.slice(i, i + step));
   return out;
 };
+
+// Fetch rows for a potentially huge resident-id list in batches.
+// PostgREST rejects URLs carrying thousands of ids, and each batch is still
+// paged because a single response is capped at 1000 rows. Batches are issued
+// concurrently (a few at a time) so a barangay-wide report costs a couple of
+// round-trip waves instead of one remote call per 200 residents.
+const mapWithConcurrency = async (items, limit, worker) => {
+  const results = new Array(items.length);
+  let next = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+};
+
+export const fetchRowsForIds = async (ids, buildQuery, batchSize = 500, concurrency = 4) => {
+  const unique = [...new Set((ids || []).filter((v) => v !== null && v !== undefined))];
+  const batches = chunk(unique, batchSize);
+  const pages = await mapWithConcurrency(batches, concurrency, (batch) => fetchAllRows(() => buildQuery(batch)));
+  return pages.flat();
+};

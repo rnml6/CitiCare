@@ -1,4 +1,5 @@
 // pages/Medicines.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Pencil, Trash2, Save, Search, X } from 'lucide-react'
 import { medicineApi } from '../api/medicineApi'
@@ -45,9 +46,9 @@ const Medicines = () => {
     dose_intervals: []
   })
 
-  const fetchMedicines = useCallback(async () => {
+  const fetchMedicines = useCallback(async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const response = await medicineApi.getAll()
       if (response.data.success) {
         setMedicines(response.data.data)
@@ -55,13 +56,14 @@ const Medicines = () => {
     } catch (error) {
       console.error('Error fetching medicines:', error)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     fetchMedicines()
   }, [fetchMedicines])
+  useDataRefresh(() => fetchMedicines(true), !loading)
 
   // Total Doses Required applies to ALL categories. Each dose gets one
   // free-text description field (optional — may be left empty).

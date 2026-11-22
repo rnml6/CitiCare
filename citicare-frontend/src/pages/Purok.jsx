@@ -1,4 +1,5 @@
 // pages/Purok.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -140,6 +141,10 @@ const Purok = () => {
   useEffect(() => {
     fetchPuroks()
   }, [fetchPuroks])
+  useDataRefresh(() => Promise.all([
+    refreshListMeta(),
+    selectedPurok && !detailLoading && !showEditModal && !showAssignBHWModal && fetchPurokDetails(selectedPurok, true)
+  ]), !loading)
 
   // Per-purok assigned BHW workers — returned by GET /api/puroks.
   const bhwByPurok = useMemo(() => {
@@ -185,9 +190,9 @@ const Purok = () => {
     }
   }, [returnDateStr, selectedPurok, detailLoading])
 
-  const fetchPurokDetails = async purok => {
+  const fetchPurokDetails = async (purok, background = false) => {
     try {
-      setDetailLoading(true)
+      if (!background) setDetailLoading(true)
       const [purokRes, bhwsRes, schedulesRes] = await Promise.all([
         purokApi.getById(purok.id),
         bhwApi.getAll(),
@@ -245,7 +250,7 @@ const Purok = () => {
     } catch (error) {
       console.error('Error:', error)
     } finally {
-      setDetailLoading(false)
+      if (!background) setDetailLoading(false)
     }
   }
 

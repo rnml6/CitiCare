@@ -1,4 +1,5 @@
 // pages/Schedules.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -169,8 +170,8 @@ const Schedules = () => {
   const [assignedBhws, setAssignedBhws] = useState([{ bhwId: '', name: '', contactNumber: '' }])
   const [healthcareProfessionals, setHealthcareProfessionals] = useState([{ hcpId: '', name: '', contact: '' }])
 
-  const fetchSchedules = useCallback(async () => {
-    try { setLoading(true); const response = await scheduleApi.getAll(); if (response.data.success) { setSchedules(response.data.data); return response.data.data } } catch (error) { console.error('Error:', error) } finally { setLoading(false) }
+  const fetchSchedules = useCallback(async (background = false) => {
+    try { if (!background) setLoading(true); const response = await scheduleApi.getAll(); if (response.data.success) { setSchedules(response.data.data); return response.data.data } } catch (error) { console.error('Error:', error) } finally { if (!background) setLoading(false) }
     return null
   }, [])
   const fetchResidents = useCallback(async () => { try { const r = await residentApi.getAll(); if (r.data.success) setResidents(r.data.data) } catch (e) {} }
@@ -181,6 +182,23 @@ const Schedules = () => {
   , [])
 
   useEffect(() => { fetchSchedules(); fetchResidents(); fetchBhws(); fetchPuroks() }, [fetchSchedules, fetchResidents, fetchBhws, fetchPuroks])
+  useDataRefresh(() => Promise.all([
+    fetchSchedules(true), fetchResidents(), fetchBhws(), fetchPuroks(),
+    selectedSchedule && !detailLoading && !showEditModal && refreshScheduleDetail(selectedSchedule.id)
+  ]), !loading && !saving)
+
+  const refreshScheduleDetail = async id => {
+    try {
+      const response = await scheduleApi.getById(id)
+      if (response.data.success) {
+        setSelectedSchedule(current => current?.id === id ? response.data.data : current)
+      }
+    } catch (error) {
+      if ([403, 404].includes(error.response?.status)) {
+        setSelectedSchedule(current => current?.id === id ? null : current)
+      }
+    }
+  }
 
   useEffect(() => {
     if (location.state?.viewScheduleId && schedules.length > 0) {

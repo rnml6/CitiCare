@@ -3,6 +3,7 @@
 // Called after any data change that affects risk (conditions, vitals, schedules).
 
 import { supabase } from '../config/supabase.js';
+import { fetchAllRows } from './paginate.js';
 import { calculateCompositeRiskScore } from './riskCalculator.js';
 
 /**
@@ -87,10 +88,10 @@ export const recalculateAndPersistRisk = async (residentId) => {
  * Used for initial migration and periodic refresh.
  */
 export const recalculateAllRisks = async () => {
-  const { data: residents, error } = await supabase
+  const residents = await fetchAllRows(() => supabase
     .from('residents')
-    .select('resident_id');
-  if (error) throw error;
+    .select('resident_id')
+    .order('resident_id'));
 
   let count = 0;
   for (const r of residents || []) {

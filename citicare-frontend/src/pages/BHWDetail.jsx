@@ -1,3 +1,4 @@
+import { useDataRefresh } from '../utils/useDataRefresh'
 // pages/BHWDetail.jsx
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
@@ -194,27 +195,32 @@ const BHWDetail = ({ bhwId, onClose, embedded = false, onDeleted } = {}) => {
     fetchSchedules()
   }, [id])
 
-  const fetchBHW = async () => {
+  useDataRefresh(() => Promise.all([fetchBHW(true), fetchSchedules(true)]),
+    Boolean(id) && !loading && !schedulesLoading && !showEditModal && !editSaving)
+
+  const fetchBHW = async (background = false) => {
     if (!id) return
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const response = await bhwApi.getById(id)
       if (response.data.success) {
         setBhw(response.data.data)
       }
     } catch (error) {
       console.error('Error fetching BHW:', error)
-      if (embedded) onClose?.()
-      else goBack()
+      if (!background || [403, 404].includes(error.response?.status)) {
+        if (embedded) onClose?.()
+        else goBack()
+      }
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 
-  const fetchSchedules = async () => {
+  const fetchSchedules = async (background = false) => {
     if (!id) return
     try {
-      setSchedulesLoading(true)
+      if (!background) setSchedulesLoading(true)
       const response = await bhwApi.getSchedules(id)
       if (response.data.success) {
         setSchedules(response.data.data || [])
@@ -222,7 +228,7 @@ const BHWDetail = ({ bhwId, onClose, embedded = false, onDeleted } = {}) => {
     } catch (error) {
       console.error('Error fetching schedules:', error)
     } finally {
-      setSchedulesLoading(false)
+      if (!background) setSchedulesLoading(false)
     }
   }
 

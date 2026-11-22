@@ -608,8 +608,8 @@ export const updateResident = async (req, res) => {
       (focusGroups !== undefined && JSON.stringify(existing?.focus_groups || []) !== JSON.stringify(focusGroups || [])) ||
       (isPwd !== undefined && Boolean(existing?.is_pwd) !== Boolean(isPwd)) ||
       (vaccinations !== undefined && JSON.stringify(existing?.vaccinations || []) !== JSON.stringify(vaccinations || [])) ||
-      (chronicConditions !== undefined && (chronicConditions?.length || 0) > 0) ||
-      (vitalSigns !== undefined && Object.values(vitalSigns || {}).some((v) => v !== null && v !== ''));
+      chronicConditions !== undefined ||
+      Boolean(vitalSigns);
     if (riskDirty) {
       await recalculateAndPersistRisk(id);
     }

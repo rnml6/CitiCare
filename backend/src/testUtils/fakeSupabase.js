@@ -49,6 +49,9 @@ const parseOrExpression = (expression) => {
 const applyCondition = (row, condition) => {
   const { column, op, value } = condition
   const actual = getPath(row, column)
+  const isIsoDate = typeof actual === 'string' && /^\d{4}-\d{2}-\d{2}/.test(actual)
+  const left = isIsoDate ? actual : Number(actual)
+  const right = isIsoDate ? value : Number(value)
   switch (op) {
     case 'eq':
       return looseEqual(actual, value)
@@ -61,13 +64,13 @@ const applyCondition = (row, condition) => {
     case 'like':
       return new RegExp(`^${escapeRegex(String(value)).replace(/%/g, '.*')}$`).test(String(actual ?? ''))
     case 'gt':
-      return Number(actual) > Number(value)
+      return left > right
     case 'gte':
-      return Number(actual) >= Number(value)
+      return left >= right
     case 'lt':
-      return Number(actual) < Number(value)
+      return left < right
     case 'lte':
-      return Number(actual) <= Number(value)
+      return left <= right
     case 'is':
       return value === null ? actual == null : looseEqual(actual, value)
     case 'not':

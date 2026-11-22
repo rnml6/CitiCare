@@ -68,8 +68,8 @@ const assertWorkerOwnsResident = async (req, res, residentId) => {  if (req.user
     supabase.from('bhws').select('assigned_purok_id, assigned_focus_group, name').eq('bhw_id', req.user.bhwId).maybeSingle(),
     supabase.from('residents').select('purok_id, focus_groups, age, date_of_birth').eq('resident_id', residentId).maybeSingle()
   ]);
-  const assigned = me?.assigned_purok_id ?? req.user?.assignedPurokId ?? null;
-  const focusGroup = me?.assigned_focus_group ?? req.user?.assignedFocusGroup ?? null;
+  const assigned = me?.assigned_purok_id ?? null;
+  const focusGroup = me?.assigned_focus_group ?? null;
   const inPurok = resident && assigned != null && String(resident.purok_id) === String(assigned);
   const inFocus = resident && matchesFocusGroup(resident, focusGroup);
   const inSchedule = resident && !inPurok && !inFocus

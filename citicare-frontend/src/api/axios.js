@@ -12,25 +12,6 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// --- Short-lived GET cache -------------------------------------------------
-// Switching tabs (Dashboard <-> Residents <-> Purok) used to re-request every
-// list from the server even when nothing had changed. Fresh responses are kept
-// for a few seconds and replayed from memory; any successful write clears the
-// cache so edits never show stale data.
-const GET_CACHE_TTL = 15 * 1000;
-const getCache = new Map();
-
-const cacheKeyFor = (config) => {
-  const params = config.params ? JSON.stringify(config.params) : '';
-  return `${config.baseURL || ''}${config.url || ''}?${params}`;
-};
-
-const isCacheable = (config) =>
-  String(config.method || 'get').toLowerCase() === 'get' &&
-  !String(config.url || '').startsWith('/auth');
-
-const clearGetCache = () => getCache.clear();
-
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -39,22 +20,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Serve a fresh cached GET by swapping in a tiny adapter.
-    if (isCacheable(config)) {
-      const entry = getCache.get(cacheKeyFor(config));
-      if (entry && entry.expiresAt > Date.now()) {
-        config.adapter = async () => ({
-          data: entry.data,
-          status: entry.status,
-          statusText: 'OK',
-          headers: entry.headers || {},
-          config,
-          request: {},
-        });
-      } else if (entry) {
-        getCache.delete(cacheKeyFor(config));
-      }
-    }
     return config;
   },
   (error) => {
@@ -64,27 +29,10 @@ api.interceptors.request.use(
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    const method = String(response.config?.method || 'get').toLowerCase();
-    if (method === 'get') {
-      if (isCacheable(response.config)) {
-        getCache.set(cacheKeyFor(response.config), {
-          data: response.data,
-          status: response.status,
-          headers: response.headers,
-          expiresAt: Date.now() + GET_CACHE_TTL,
-        });
-      }
-    } else {
-      // A write invalidates every cached read.
-      clearGetCache();
-    }
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       clearSessionStorage();
-      clearGetCache();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

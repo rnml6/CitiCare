@@ -1,6 +1,7 @@
 // pages/bhw-worker/MyPurok.jsx
 // Full information about the handled purok only: risk breakdown,
 // assigned BHW (self), and every resident living there.
+import { useDataRefresh } from '../../utils/useDataRefresh'
 import { useState, useEffect } from 'react'
 import { Search, MapPin, Users, AlertTriangle } from 'lucide-react'
 import { purokApi } from '../../api/purokApi'
@@ -19,17 +20,18 @@ const MyPurok = () => {
   const perPage = 10
 
   useEffect(() => { fetchMine() }, [])
+  useDataRefresh(() => fetchMine(true), !loading)
   useEffect(() => { setPage(1) }, [search])
 
-  const fetchMine = async () => {
+  const fetchMine = async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const res = await purokApi.getMine()
       if (res.data.success) setPurok(res.data.data)
     } catch (err) {
       console.error('My purok error:', err)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 

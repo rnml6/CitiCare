@@ -3,6 +3,7 @@
 // day modal, and detail sections) — the only difference is the data source:
 // only schedules assigned to the logged-in BHW. Writes stay worker-scoped
 // (individual scope, self as lead, status/notes/attendance only).
+import { useDataRefresh } from '../../utils/useDataRefresh'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -126,6 +127,23 @@ const MySchedules = () => {
   const [healthcareProfessionals, setHealthcareProfessionals] = useState([{ hcpId: '', name: '', contact: '' }])
 
   useEffect(() => { fetchMine() }, [])
+  useDataRefresh(() => Promise.all([
+    fetchMine(true),
+    selected && !detailLoading && !showEditModal && refreshScheduleDetail(selected.id)
+  ]), !loading && !saving)
+
+  const refreshScheduleDetail = async id => {
+    try {
+      const response = await scheduleApi.getById(id)
+      if (response.data.success) {
+        setSelected(current => current?.id === id ? response.data.data : current)
+      }
+    } catch (error) {
+      if ([403, 404].includes(error.response?.status)) {
+        setSelected(current => current?.id === id ? null : current)
+      }
+    }
+  }
   useEffect(() => { setPage(1) }, [searchTerm, scopeFilter, statusFilter, viewMode])
   // Keep the draft pinned to the handled purok (field is read-only, but
   // resident picks and older drafts could still carry another value).
@@ -133,9 +151,9 @@ const MySchedules = () => {
     if (handledPurok) setForm(prev => (prev.locationPurok === handledPurok ? prev : { ...prev, locationPurok: handledPurok }))
   }, [handledPurok])
 
-  const fetchMine = async () => {
+  const fetchMine = async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const [schedRes, resRes, bhwRes] = await Promise.all([
         scheduleApi.getMine(),
         residentApi.getMine().catch(() => ({ data: { success: false } })),
@@ -147,7 +165,7 @@ const MySchedules = () => {
     } catch (err) {
       console.error('My schedules error:', err)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 

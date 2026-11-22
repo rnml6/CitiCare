@@ -30,17 +30,28 @@ mock.module('./config/supabase.js', {
 const { default: app } = await import('./app.js')
 
 const realFetch = globalThis.fetch
+let recommendationData
 globalThis.fetch = async (url, options) => {
   if (String(url).includes('generativelanguage.googleapis.com')) {
+    const prompt = JSON.parse(options.body).contents[0].parts[0].text
+    recommendationData = JSON.parse(prompt.split('\nDATA: ')[1].split('\n')[0])
     const payload = {
       summary: 'Test recommendation',
-      keyFindings: [],
+      keyFindings: ['22 consultations were missed in this period.', 'A separate finding.'],
       riskAreas: [],
-      recommendations: [],
+      recommendations: [{
+        action: 'Trace the 22 missed consultations.',
+        targetGroup: '22 residents'
+      }],
       predictedTrends: { nextMonth: '', concerns: [], positiveIndicators: [] },
       medicineDemandForecast: { forecasts: [] },
-      priorityResidents: { recommendations: [] },
-      purokPriority: { rankings: [] },
+      priorityResidents: { recommendations: [{
+        resident: 'Unrecorded resident',
+        purok: 'Unrecorded purok',
+        riskLevel: 'Critical Risk',
+        intervention: 'Arrange an assessment.'
+      }] },
+      purokPriority: { rankings: [{ purok: 'Unrecorded purok', priority: 'Critical' }] },
       healthProgramRecommendation: { programs: [] }
     }
     return new Response(
@@ -371,6 +382,22 @@ test('residents: unknown resources return 404 and invalid updates return 400', a
     await request('PUT', '/api/residents/resident-1', { token: adminToken, body: { name: 'Updated Name' } }),
     200
   )
+})
+
+test('residents: clearing clinical fields refreshes the stored risk score', async () => {
+  const resident = fake.tables.get('residents')[0]
+  resident.risk_score = 95
+  fake.tables.set('resident_chronic_conditions', [
+    { resident_id: resident.resident_id, condition_name: 'Hypertension' }
+  ])
+
+  const response = await request('PUT', `/api/residents/${resident.resident_id}`, {
+    token: adminToken,
+    body: { chronicConditions: [] }
+  })
+  expectStatus(response, 200)
+  assert.equal(fake.tables.get('resident_chronic_conditions').length, 0)
+  assert.ok(resident.risk_score < 95)
 })
 
 test('medical history: vital-sign boundaries and unknown resident handling', async () => {
@@ -927,6 +954,163 @@ test('dashboard: every route responds for an admin token', async () => {
     expectStatus(response, 200)
     assert.equal(response.body?.success, true, `${path} did not return success`)
   }
+})
+
+test('dashboard: analytics include the latest rows beyond the first database page', async () => {
+  const residents = Array.from({ length: 1001 }, (_, index) => ({
+    resident_id: index + 1,
+    purok_id: 'purok-1',
+    age: 25,
+    risk_level: 'Low Risk'
+  }))
+  fake.tables.set('residents', residents)
+  fake.tables.set('resident_chronic_conditions', residents.map(resident => ({
+    condition_id: resident.resident_id,
+    resident_id: resident.resident_id,
+    condition_name: 'First condition'
+  })))
+  fake.tables.set('medical_histories', residents.map(resident => ({
+    history_id: resident.resident_id,
+    resident_id: resident.resident_id,
+    date: '2025-01-01'
+  })))
+  const getDashboardData = async path => {
+    const response = await request('GET', `/api/dashboard/${path}`, { token: adminToken })
+    expectStatus(response, 200)
+    assert.equal(response.headers.get('cache-control'), 'private, no-store')
+    return response.body.data
+  }
+
+  assert.equal((await getDashboardData('risk-distribution')).low, 1001)
+  fake.tables.get('residents')[1000].risk_level = 'High Risk'
+  assert.equal((await getDashboardData('risk-distribution')).high, 1)
+  assert.deepEqual((await getDashboardData('common-diseases')).overall, [{ name: 'First condition', count: 1001 }])
+  assert.deepEqual((await getDashboardData('common-diseases?purokId=empty')).overall, [])
+
+  const [january] = await getDashboardData('monthly-trends?year=2025')
+  const visitCount = january.criticalHealthRisk + january.highHealthRisk + january.moderateHealthRisk + january.lowHealthRisk
+  assert.equal(visitCount, 1001)
+})
+
+test('dashboard: AI findings include missed care while risk lists include only high and critical risk', async () => {
+  fake.tables.set('residents', Array.from({ length: 20 }, (_, index) => {
+    const purok = index === 19 ? 2 : index === 8 ? 3 : index >= 1 && index < 6 ? 4 : 1
+    return {
+      resident_id: index + 1,
+      name: `Resident ${index + 1}`,
+      purok_id: `purok-${purok}`,
+      puroks: { name: `Purok ${purok}` },
+      risk_score: index < 6 ? 80 : index === 19 ? 60 : index === 8 ? 30 : 5,
+    }
+  }))
+  const schedules = Array.from({ length: 22 }, (_, index) => ({
+    schedule_id: index + 1,
+    resident_id: (index % 19) + 1,
+    status: 'Missed',
+    date: '2024-01-01'
+  }))
+  schedules.push(
+    { schedule_id: 23, resident_id: 20, status: 'Missed', date: '2024-01-01' },
+    { schedule_id: 24, resident_id: 20, status: 'Completed', date: '2024-01-02' },
+    { schedule_id: 25, resident_id: null, status: 'Missed', date: '2024-01-01' }
+  )
+  fake.tables.set('schedules', schedules)
+  const analytics = await request('GET', '/api/dashboard/missed-consultations', { token: adminToken })
+  expectStatus(analytics, 200)
+  assert.equal(analytics.body.data.length, 19)
+  assert.equal(analytics.body.data.reduce((total, row) => total + row.missedCount, 0), 22)
+
+  const path = '/api/dashboard/ai-recommendation?period=monthly'
+  const report = await request('GET', path, { token: adminToken })
+  expectStatus(report, 200)
+  assert.equal(recommendationData.residentsWithMissedConsultations, analytics.body.data.length)
+  assert.ok(report.body.data.keyFindings.some(finding => finding.startsWith('19 residents have outstanding missed health consultations.')))
+  assert.ok(report.body.data.keyFindings.every(finding => !finding.includes('22')))
+  assert.ok(report.body.data.recommendations.some(r => r.targetGroup === '19 residents with outstanding missed health consultations'))
+  const priorities = report.body.data.priorityResidents.recommendations
+  assert.deepEqual(priorities.map(r => r.residentId), [1, 2, 3, 4, 5, 6, 20])
+  assert.equal(priorities.filter(r => r.riskLevel === 'Critical Risk').length, 6)
+  assert.equal(priorities.find(r => r.residentId === 20).missedCount, 0)
+  assert.match(priorities.find(r => r.residentId === 1).intervention, /Contact today.*rebook/)
+  assert.match(priorities.find(r => r.residentId === 20).intervention, /Contact this week/)
+  assert.deepEqual(report.body.data.riskAreas.map(r => [r.area, r.severity]), [
+    ['Purok 4', 'Critical'], ['Purok 2', 'High']
+  ])
+  assert.match(report.body.data.riskAreas[0].action, /Contact critical-risk residents today/)
+  assert.ok(report.body.data.healthProgramRecommendation.programs.length > 0)
+  assert.deepEqual(report.body.data.purokPriority.rankings, [])
+})
+
+test('dashboard: worker AI recommendations follow the current analytics scopes', async () => {
+  const worker = fake.tables.get('bhws')[0]
+  worker.assigned_purok_id = 'purok-1'
+  worker.assigned_focus_group = 'pregnant'
+  const residents = Array.from({ length: 1001 }, (_, index) => ({
+    resident_id: index + 1,
+    name: `Resident ${index + 1}`,
+    purok_id: index === 1 ? 'purok-2' : 'purok-1',
+    focus_groups: index < 2 ? ['pregnant', 'senior'] : ['senior'],
+    risk_score: index < 2 ? 80 : 0
+  }))
+  fake.tables.set('residents', residents)
+  fake.tables.set('resident_chronic_conditions', residents.slice(0, 3).map(resident => ({
+    condition_id: resident.resident_id,
+    resident_id: resident.resident_id,
+    condition_name: `Condition ${resident.resident_id}`
+  })))
+  fake.tables.set('schedules', [1, 2, 3].map(residentId => ({
+    schedule_id: residentId,
+    resident_id: residentId,
+    date: '2024-01-01',
+    status: 'Missed'
+  })))
+  const path = '/api/dashboard/ai-recommendation'
+
+  const firstReport = await request('GET', path, { token: workerToken })
+  expectStatus(firstReport, 200)
+  assert.equal(recommendationData.totalResidents, 1001)
+  assert.equal(recommendationData.residentsInAssignedPurok, 1000)
+  assert.equal(recommendationData.residentsWithMissedConsultations, 3)
+  assert.deepEqual(recommendationData.vulnerableGroups, { pregnant: 2, senior: 0, infant: 0 })
+  assert.deepEqual(firstReport.body.data.priorityResidents.recommendations.map(r => r.resident), ['Resident 1', 'Resident 2'])
+  assert.deepEqual(firstReport.body.data.priorityResidents.recommendations[1].conditions, ['Condition 2'])
+  assert.ok(firstReport.body.data.healthProgramRecommendation.programs.length > 0)
+  assert.ok(firstReport.body.data.keyFindings.some(finding => finding.startsWith('3 residents in your assigned caseload')))
+  const stats = await request('GET', '/api/dashboard/stats', { token: workerToken })
+  const missed = await request('GET', '/api/dashboard/missed-consultations', { token: workerToken })
+  const conditions = await request('GET', '/api/dashboard/common-diseases', { token: workerToken })
+  for (const response of [stats, missed, conditions]) expectStatus(response, 200)
+  assert.equal(recommendationData.totalResidents, stats.body.data.totalResidents)
+  assert.equal(recommendationData.criticalCount, stats.body.data.criticalCount)
+  assert.equal(recommendationData.residentsWithMissedConsultations, missed.body.data.length)
+  assert.deepEqual(recommendationData.topDiseases, conditions.body.data.overall)
+
+  worker.assigned_purok_id = 'purok-2'
+  const reassignedReport = await request('GET', path, { token: workerToken })
+  expectStatus(reassignedReport, 200)
+  assert.deepEqual(reassignedReport.body.data.priorityResidents.recommendations.map(r => r.resident), ['Resident 1', 'Resident 2'])
+  assert.equal(recommendationData.totalResidents, 2)
+  assert.deepEqual(recommendationData.topDiseases, [{ name: 'Condition 2', count: 1 }])
+  worker.assigned_focus_group = null
+  const withoutFocus = await request('GET', path, { token: workerToken })
+  expectStatus(withoutFocus, 409)
+  assert.equal(withoutFocus.body.code, 'BHW_ASSIGNMENT_REQUIRED')
+  worker.assigned_focus_group = 'pregnant'
+  worker.assigned_purok_id = null
+  expectStatus(await request('GET', path, { token: workerToken }), 409)
+
+  const headToken = tokenFor({ userId: 'admin-user-1', role: 'BHW Admin' })
+  expectStatus(await request('GET', path, { token: headToken }), 200)
+  assert.equal(recommendationData.totalResidents, 1001)
+  assert.equal(recommendationData.criticalCount, 2)
+  assert.equal(recommendationData.residentsWithMissedConsultations, 3)
+  assert.equal(recommendationData.vulnerableGroups.senior, 1001)
+
+  fake.tables.get('residents')[1000].risk_score = 90
+  const refreshedHeadReport = await request('GET', path, { token: headToken })
+  expectStatus(refreshedHeadReport, 200)
+  assert.equal(recommendationData.criticalCount, 3)
+  assert.equal(refreshedHeadReport.body.data.priorityResidents.recommendations[0].residentId, 1001)
 })
 
 test('dashboard: worker-scoped routes and vulnerable-group query validation', async () => {

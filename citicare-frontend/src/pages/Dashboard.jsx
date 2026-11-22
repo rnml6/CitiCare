@@ -1,4 +1,5 @@
 // pages/Dashboard.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { navigateWithReturn } from '../utils/navigation'
@@ -161,8 +162,11 @@ const Dashboard = () => {
   const [aiPurokRankPage, setAiPurokRankPage] = useState(1)
   const [aiProgramsPage, setAiProgramsPage] = useState(1)
   const aiListPerPage = 3
-  const [aiRecommendation, setAiRecommendation] = useState(null)
+  const [aiReport, setAiReport] = useState(null)
+  const aiScope = isBHWWorker ? JSON.stringify([user?.bhw?.assignedPurokId, bhwFocusGroup]) : 'barangay'
+  const aiRecommendation = aiReport?.scope === aiScope ? aiReport.data : null
   const [loading, setLoading] = useState(true)
+  const [aiError, setAiError] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiPeriod, setAiPeriod] = useState('monthly')
   const [selectedPurokForDiseases, setSelectedPurokForDiseases] =
@@ -195,36 +199,10 @@ const Dashboard = () => {
     fetchDashboardData()
   }, [])
 
-  // Realtime Missed Health Consultations + Today's activities: silent
-  // refresh every 30s and whenever the tab regains focus, so a checkup
-  // completed elsewhere shows up without a manual reload.
-  useEffect(() => {
-    let cancelled = false
-    const refreshLive = async () => {
-      try {
-        const [missedRes, activitiesRes] = await Promise.all([
-          dashboardApi.getMissedConsultations(),
-          dashboardApi.getTodayActivities()
-        ])
-        if (cancelled) return
-        if (missedRes.data?.success) setMissedConsultations(missedRes.data.data || [])
-        if (activitiesRes.data?.success) setTodayActivities(activitiesRes.data.data || [])
-      } catch (e) {
-        // Silent: keep last good data on background refresh.
-      }
-    }
-    const onFocus = () => refreshLive()
-    const onVisibility = () => { if (document.visibilityState === 'visible') refreshLive() }
-    const timer = setInterval(refreshLive, 30000)
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      cancelled = true
-      clearInterval(timer)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [])
+  useDataRefresh(() => Promise.all([
+    fetchDashboardData(true),
+    activityView === 'upcoming' && fetchUpcomingActivities(true)
+  ]), !loading && !upcomingLoading)
 
   useEffect(() => {
     const measure = () => {
@@ -253,9 +231,9 @@ const Dashboard = () => {
     }
   }, [loading])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const [
         statsRes,
         riskRes,
@@ -264,7 +242,7 @@ const Dashboard = () => {
         trendsRes,
         activitiesRes,
         missedRes
-      ] = await Promise.all([
+      ] = (await Promise.allSettled([
         dashboardApi.getStats(),
         dashboardApi.getRiskDistribution(),
         dashboardApi.getRiskDistributionByPurok(),
@@ -272,9 +250,13 @@ const Dashboard = () => {
         dashboardApi.getMonthlyTrends(),
         dashboardApi.getTodayActivities(),
         dashboardApi.getMissedConsultations()
-      ])
-      if (statsRes.data.success) setStats(statsRes.data.data)
-      if (riskRes.data.success) {
+      ])).map(result => {
+        if (result.status === 'fulfilled') return result.value
+        console.error('Dashboard data refresh failed:', result.reason)
+        return null
+      })
+      if (statsRes?.data.success) setStats(statsRes.data.data)
+      if (riskRes?.data.success) {
         const d = riskRes.data.data
         setRiskDistribution([
           { name: 'Critical', value: d.critical || 0, color: '#ef4444' },
@@ -283,35 +265,35 @@ const Dashboard = () => {
           { name: 'Low', value: d.low || 0, color: '#10b981' }
         ])
       }
-      if (purokRiskRes.data.success) setPurokRiskData(purokRiskRes.data.data)
-      if (diseasesRes.data.success) setCommonDiseases(diseasesRes.data.data)
-      if (trendsRes.data.success) setMonthlyTrends(trendsRes.data.data)
-      if (activitiesRes.data.success)
+      if (purokRiskRes?.data.success) setPurokRiskData(purokRiskRes.data.data)
+      if (diseasesRes?.data.success) setCommonDiseases(diseasesRes.data.data)
+      if (trendsRes?.data.success) setMonthlyTrends(trendsRes.data.data)
+      if (activitiesRes?.data.success)
         setTodayActivities(activitiesRes.data.data)
-      if (missedRes.data.success) setMissedConsultations(missedRes.data.data || [])
+      if (missedRes?.data.success) setMissedConsultations(missedRes.data.data || [])
     } catch (error) {
       console.error('Error:', error)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 
-  const fetchUpcomingActivities = async () => {
+  const fetchUpcomingActivities = async (background = false) => {
     try {
-      setUpcomingLoading(true)
+      if (!background) setUpcomingLoading(true)
       const response = await dashboardApi.getUpcomingActivities()
-      if (response.data.success) setUpcomingActivities(response.data.data)
+      if (response?.data.success) setUpcomingActivities(response.data.data)
     } catch (error) {
       console.error('Error fetching upcoming activities:', error)
     } finally {
-      setUpcomingLoading(false)
+      if (!background) setUpcomingLoading(false)
     }
   }
 
   const handleActivityViewChange = view => {
     setActivityView(view)
     setActivitiesPage(1)
-    if (view === 'upcoming' && upcomingActivities.length === 0) {
+    if (view === 'upcoming' && activityView !== 'upcoming') {
       fetchUpcomingActivities()
     }
   }
@@ -410,9 +392,15 @@ const Dashboard = () => {
   const fetchAIRecommendation = async period => {
     try {
       setAiLoading(true)
+      setAiError('')
+      setAiReport(null)
       const response = await dashboardApi.getAIRecommendation(period)
-      if (response.data.success) setAiRecommendation(response.data.data)
+      if (response.data.success) setAiReport({ scope: aiScope, data: response.data.data })
+      else setAiError('Could not generate recommendations. Select a period to retry.')
     } catch (error) {
+      setAiError(error.response?.data?.code === 'BHW_ASSIGNMENT_REQUIRED'
+        ? error.response.data.message
+        : 'Could not generate recommendations. Select a period to retry.')
       console.error('AI Error:', error)
     } finally {
       setAiLoading(false)
@@ -1144,12 +1132,18 @@ const Dashboard = () => {
             <h2 className='text-base sm:text-lg font-semibold text-white'>
               AI Health Recommendations
             </h2>
+            {aiRecommendation?.generatedAt && (
+              <p className='text-xs text-white/70 mt-1'>
+                Generated {new Date(aiRecommendation.generatedAt).toLocaleString()}
+              </p>
+            )}
           </div>
           <div className='flex items-center gap-2 w-full sm:w-auto'>
             <div className='flex w-full sm:w-auto bg-white/10 rounded-lg p-0.5 border border-white/20'>
               {['monthly', 'quarterly', 'annual'].map(p => (
                 <button
                   key={p}
+                  disabled={aiLoading}
                   onClick={() => {
                     setAiPeriod(p)
                     fetchAIRecommendation(p)
@@ -1168,6 +1162,8 @@ const Dashboard = () => {
         </div>
         {aiLoading ? (
           <SkeletonAIRecommendation isBHWWorker={isBHWWorker} />
+        ) : aiError ? (
+          <p role='alert' className='mt-4 text-sm text-white/80'>{aiError}</p>
         ) : aiRecommendation ? (
           <div className='space-y-8 mt-6 break-words'>
             <div className='grid grid-cols-1 gap-5'>
@@ -1209,7 +1205,7 @@ const Dashboard = () => {
                 <h3 className='text-base font-semibold text-white mb-2'>
                   Risk Areas
                 </h3>
-                {!aiRecommendation.riskAreas?.length && <p className='text-sm text-white/75'>No specific risk areas identified in the available data.</p>}
+                {!aiRecommendation.riskAreas?.length && <p className='text-sm text-white/75'>No puroks have high or critical average risk in this report.</p>}
                 {(() => {
                   const p = paginateAiList(aiRecommendation.riskAreas, aiRisksPage)
                   return (
@@ -1235,10 +1231,13 @@ const Dashboard = () => {
                               : 'bg-emerald-500/20 text-emerald-300'
                           }`}
                         >
-                          {String(r.severity ?? 'Low').toUpperCase()} RISK
+                          {r.severity} average risk
                         </span>
                       </div>
-                      <p className='text-white text-sm leading-relaxed'>{typeof r.description === 'string' ? r.description : ''}</p>
+                      <p className='text-white text-sm leading-relaxed'>{r.description}</p>
+                      <p className='text-sm text-white/90 leading-relaxed mt-2'>
+                        <span className='font-semibold'>Next step </span>{r.action}
+                      </p>
                     </div>
                       ))}
                     </div>
@@ -1316,7 +1315,6 @@ const Dashboard = () => {
                 )
               })()}
             </section>
-            {!isBHWWorker && (
             <section className='min-w-0 border-y border-white/10 py-6'>
               <h3 className='text-base font-semibold text-white mb-2'>
                 Health Program Recommendations
@@ -1362,23 +1360,22 @@ const Dashboard = () => {
                 )
               })()}
             </section>
-            )}
             {aiRecommendation.priorityResidents?.recommendations?.length > 0 && (
               <div className='min-w-0 border-y border-white/10 py-6'>
                 <h3 className='text-base font-semibold text-white mb-2'>
                   Priority Residents
                 </h3>
                 <p className='text-sm text-white/75 leading-relaxed mb-4'>
-                  Risk scores guide follow-up priority; they do not confirm an emergency. Clinical urgency depends on current symptoms and assessment.
+                  Follow up with residents who have critical or high recorded risk.
                 </p>
                 {(() => {
                   const p = paginateAiList(aiRecommendation.priorityResidents.recommendations, aiPriorityPage)
                   return (
                     <>
                     <div className='grid grid-cols-1 gap-5'>
-                      {p.items.map((r, i) => (
+                      {p.items.map(r => (
                         <div
-                          key={(p.safePage - 1) * aiListPerPage + i}
+                          key={r.residentId}
                           className={`min-w-0 rounded-xl border p-5 ${getAIPriorityCard(r.urgency)}`}
                         >
                           <div className='flex items-center justify-between gap-2 flex-wrap mb-1'>
@@ -1398,7 +1395,7 @@ const Dashboard = () => {
                             </span>
                           </div>
                           <p className='text-xs text-white/85 leading-relaxed mb-2.5'>
-                            {[r.age != null && r.age !== '' ? `${r.age}y old` : null, !isBHWWorker ? r.purok : null, r.riskLevel, r.riskScore != null ? `Score ${r.riskScore}` : null].filter(Boolean).join(' • ')}
+                            {[r.age != null && r.age !== '' ? `${r.age}y old` : null, r.purok, r.riskLevel, r.missedCount > 0 ? `${r.missedCount} missed` : null, r.riskScore != null ? `Score ${r.riskScore}` : null].filter(Boolean).join(' • ')}
                           </p>
                           {r.conditions?.length > 0 && (
                             <div className='flex flex-wrap gap-1.5 mb-2.5'>

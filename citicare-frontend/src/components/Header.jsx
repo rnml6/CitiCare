@@ -1,4 +1,5 @@
 // components/Header.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -63,6 +64,7 @@ const Header = () => {
       fetchNotifications()
     }
   }, [showNotifications, showAllNotifications])
+  useDataRefresh(() => fetchNotifications(true), (showNotifications || showAllNotifications) && !loadingNotifications)
 
   // Once the user views the notifications, mark everything currently
   // loaded as seen so the bell bubble goes back to 0 / hides.
@@ -120,8 +122,8 @@ const Header = () => {
     })
   }
 
-  const fetchNotifications = async () => {
-    setLoadingNotifications(true)
+  const fetchNotifications = async (background = false) => {
+    if (!background) setLoadingNotifications(true)
     try {
       const res = await dashboardApi.getNotifications()
       if (!res.data.success) return
@@ -331,7 +333,7 @@ const Header = () => {
     } catch (error) {
       console.error('Error fetching notifications:', error)
     } finally {
-      setLoadingNotifications(false)
+      if (!background) setLoadingNotifications(false)
     }
   }
 

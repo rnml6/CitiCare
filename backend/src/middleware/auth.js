@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '../config/auth.js';
 import { buildWorkerResidentScope } from '../utils/workerScope.js';
-import { cacheRemember } from '../utils/cache.js';
+import { fetchAllRows } from '../utils/paginate.js';
 
 const getBearerToken = (req) => {
   const header = req.headers?.authorization;
@@ -133,69 +133,32 @@ const workerResidentMatchesFocus = (r, focusGroup) => {
 export const scopeForWorker = async (req, res, next) => {
   if (req.user?.role !== 'BHW Worker') return next();
   try {
-    // Resolving a worker's scope means reading their assignment AND paging
-    // through every resident in the barangay (4 round trips for ~3.6k
-    // residents). Doing that on every single API call added ~0.7s to each
-    // request in the BHW portal. The resolved scope is identity-based, so it
-    // is cached briefly and dropped whenever any write happens.
-    const scope = await cacheRemember(
-      `worker-scope:${req.user.userId}`,
-      60 * 1000,
-      async () => {
-        // Lazy-import supabase to avoid circular deps at module load time.
-        const { supabase } = await import('../config/supabase.js');
-        const { data: me, error } = await supabase
-          .from('bhws')
-          .select('bhw_id, assigned_purok_id, assigned_focus_group')
-          .eq('user_id', req.user.userId)
-          .maybeSingle();
-        if (error) throw error;
-        if (!me) {
-          return { bhwId: null, purokId: null, focusGroup: null, purokResidentIds: [], focusResidentIds: [], residentIds: [] };
-        }
-        const focusGroup = me.assigned_focus_group || null;
-        const residents = [];
-        if (me.assigned_purok_id || focusGroup) {
-          for (let offset = 0; ; offset += 1000) {
-            let query = supabase.from('residents')
-              .select('resident_id, purok_id, focus_groups, age, date_of_birth')
-              .order('resident_id').range(offset, offset + 999);
-            // The handled focus/vulnerable group is barangay-wide (e.g. a
-            // BHW handling pregnant covers all pregnant in the barangay), so
-            // the purok filter applies only to purok-only assignments.
-            // buildWorkerResidentScope still splits purok vs focus ids itself.
-            if (me.assigned_purok_id && !focusGroup) query = query.eq('purok_id', me.assigned_purok_id);
-            const { data, error: residentError } = await query;
-            if (residentError) throw residentError;
-            residents.push(...(data || []));
-            if (!data || data.length < 1000) break;
-          }
-        }
-        const resolved = buildWorkerResidentScope(residents, me.assigned_purok_id, focusGroup, workerResidentMatchesFocus);
-        return {
-          bhwId: me.bhw_id ?? null,
-          purokId: me.assigned_purok_id,
-          focusGroup,
-          ...resolved,
-        };
-      }
-    );
+    const { supabase } = await import('../config/supabase.js');
+    const { data: me, error } = await supabase.from('bhws')
+      .select('bhw_id, assigned_purok_id, assigned_focus_group')
+      .eq('user_id', req.user.userId)
+      .maybeSingle();
+    if (error) throw error;
 
-    req.user.bhwId = scope.bhwId ?? req.user?.bhwId ?? null;
-    req.user.purokId = scope.purokId;
-    req.user.focusGroup = scope.focusGroup;
-    req.user.purokResidentIds = scope.purokResidentIds || [];
-    req.user.focusResidentIds = scope.focusResidentIds || [];
-    req.user.residentIds = scope.residentIds || [];
+    const purokId = me?.assigned_purok_id ?? null;
+    const focusGroup = me?.assigned_focus_group || null;
+    const residents = purokId || focusGroup ? await fetchAllRows(() => {
+      const query = supabase.from('residents')
+        .select('resident_id, purok_id, focus_groups, age, date_of_birth')
+        .order('resident_id');
+      // A focus assignment still includes its barangay-wide group in the worker portal.
+      return purokId && !focusGroup ? query.eq('purok_id', purokId) : query;
+    }) : [];
+
+    Object.assign(req.user, {
+      bhwId: me?.bhw_id ?? null,
+      purokId,
+      focusGroup,
+      ...buildWorkerResidentScope(residents, purokId, focusGroup, workerResidentMatchesFocus),
+    });
     next();
   } catch (err) {
     console.error('scopeForWorker failed:', err.message);
-    // Fail open with empty scope rather than blocking the request.
-    req.user.purokId = null;
-    req.user.focusGroup = req.user?.assignedFocusGroup ?? null;
-    req.user.purokResidentIds = [];
-    req.user.focusResidentIds = [];
-    req.user.residentIds = [];
     return res.status(500).json({ success: false, message: 'Failed to resolve your BHW assignment' });
   }
 };

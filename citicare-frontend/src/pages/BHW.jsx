@@ -1,4 +1,5 @@
 // pages/BHW.jsx
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -91,14 +92,15 @@ const BHW = () => {
     assignedPurokId: '', assignedFocusGroup: '', username: '', password: '', confirmPassword: '', accountRole: 'BHW Worker'
   })
 
-  const fetchBHWs = useCallback(async () => {
-    try { setLoading(true); const response = await bhwApi.getAll(); if (response.data.success) setBhws(response.data.data) } catch (error) { console.error('Error:', error) } finally { setLoading(false) }
+  const fetchBHWs = useCallback(async (background = false) => {
+    try { if (!background) setLoading(true); const response = await bhwApi.getAll(); if (response.data.success) setBhws(response.data.data) } catch (error) { console.error('Error:', error) } finally { if (!background) setLoading(false) }
   }, [])
   const fetchPuroks = useCallback(async () => {
     try { const response = await purokApi.getAll(); if (response.data.success) setPuroks(response.data.data) } catch (error) { console.error('Error:', error) }
   }, [])
 
   useEffect(() => { fetchBHWs(); fetchPuroks() }, [fetchBHWs, fetchPuroks])
+  useDataRefresh(() => Promise.all([fetchBHWs(true), fetchPuroks()]), !loading)
 
   // Reopen the detail modal when returning from elsewhere (e.g. closing a
   // Schedule Details opened from inside it) — back goes to the previous modal.

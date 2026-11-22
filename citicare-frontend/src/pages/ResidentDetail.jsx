@@ -1,3 +1,4 @@
+import { useDataRefresh } from '../utils/useDataRefresh'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -320,9 +321,9 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
     useState(false)
   const [administeredByFilter, setAdministeredByFilter] = useState('')
 
-  const fetchAllData = useCallback(async () => {
+  const fetchAllData = useCallback(async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       setLoadError(null)
       // Settled (not all-or-nothing): a failing auxiliary call (e.g.
       // medicines for a resident outside the BHW's purok) must never blank
@@ -341,6 +342,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
         // Surface the real server reason (e.g. scope 403 vs missing 404)
         // instead of a generic "not found".
         setLoadError(residentResult.reason?.response?.data?.message || null)
+        if ([403, 404].includes(residentResult.reason?.response?.status)) setResident(null)
       }
       if (medicineResult.status === 'rejected') console.error('Error fetching medicines:', medicineResult.reason)
       if (bhwResult.status === 'rejected') console.error('Error fetching BHWs:', bhwResult.reason)
@@ -366,7 +368,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
     } catch (e) {
       console.error('Error fetching data:', e)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }, [id])
 
@@ -425,6 +427,9 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   useEffect(() => {
     fetchAllData()
   }, [fetchAllData])
+
+  useDataRefresh(() => fetchAllData(true), !loading && !showMedicalModal && !showEditModal &&
+    !showConfirmModal && !editingConditions && !editingMedications && !editingAllergies)
 
   const getAvailableYears = () => {
     const y = new Set()

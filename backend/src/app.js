@@ -11,7 +11,6 @@ import purokRoutes from './routes/purokRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import medicineRoutes from './routes/medicineRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { responseCache } from './middleware/responseCache.js';
 import { keepSupabaseWarm } from './utils/keepAlive.js';
 
 const app = express();
@@ -35,14 +34,15 @@ if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 app.use(express.json({ limit: '1mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Serve repeated JSON reads (Dashboard, Residents, Purok, ...) from memory.
-// Any successful write clears the cache, so reads stay fresh after edits.
 app.use((req, res, next) => {
   // Keep the remote Supabase connection warm while someone is using the app.
   keepSupabaseWarm();
   next();
 });
-app.use(responseCache);
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'private, no-store');
+  next();
+});
 
 app.get('/health', (req, res) => {
   res.json({

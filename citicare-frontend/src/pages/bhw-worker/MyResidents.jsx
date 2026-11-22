@@ -1,6 +1,7 @@
 // pages/bhw-worker/MyResidents.jsx
 // Combined purok overview + resident list. Shows purok stats and every
 // resident in the handled purok (plus focus group if assigned).
+import { useDataRefresh } from '../../utils/useDataRefresh'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Search, Plus, Users, Heart, User, AlertTriangle, Pencil, Trash2 } from 'lucide-react'
@@ -65,6 +66,7 @@ const MyResidents = () => {
   const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => { fetchMine(); fetchPurok(); fetchMissedConsultations() }, [])
+  useDataRefresh(() => Promise.all([fetchMine(true), fetchPurok(), fetchMissedConsultations()]), !loading)
   useEffect(() => { setPage(1) }, [search, tab, filterRisk, filterGroup])
 
   const calculateAge = dateOfBirth => {
@@ -121,9 +123,9 @@ const MyResidents = () => {
     }
   }, [addForm.dateOfBirth, addForm.chronicConditions, addForm.gender])
 
-  const fetchMine = async () => {
+  const fetchMine = async (background = false) => {
     try {
-      setLoading(true)
+      if (!background) setLoading(true)
       const res = await residentApi.getMine()
       if (res.data.success) {
         setData(res.data.data)
@@ -132,7 +134,7 @@ const MyResidents = () => {
     } catch (err) {
       console.error('My residents error:', err)
     } finally {
-      setLoading(false)
+      if (!background) setLoading(false)
     }
   }
 

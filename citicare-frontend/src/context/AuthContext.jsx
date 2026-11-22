@@ -1,3 +1,4 @@
+import { useDataRefresh } from '../utils/useDataRefresh'
 // context/AuthContext.jsx
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { authApi } from '../api/authApi';
@@ -77,6 +78,21 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  const refreshWorkerProfile = async () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    try {
+      const response = await authApi.verifyToken();
+      const refreshedUser = response.data?.data?.user;
+      if (response.data?.success && refreshedUser && localStorage.getItem(TOKEN_KEY) === token) {
+        setUser(current => current?.id === refreshedUser.id ? { ...current, bhw: refreshedUser.bhw } : current);
+      }
+    } catch (error) {
+      console.error('BHW profile refresh failed:', error?.response?.status || error?.message);
+    }
+  };
+  useDataRefresh(refreshWorkerProfile, isAuthenticated && user?.role === 'BHW Worker');
 
   const login = useCallback(async (email, password) => {
     try {
