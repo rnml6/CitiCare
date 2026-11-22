@@ -51,10 +51,9 @@ const MyPurok = () => {
 
   const residents = sortResidentsAlphabetically(purok.residents || [])
   const filtered = residents.filter(r => !search || r.name?.toLowerCase().includes(search.toLowerCase()))
-  const hasActiveFilters = search !== ''
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
   const safePage = Math.min(Math.max(1, page), totalPages)
-  const paged = hasActiveFilters ? filtered : filtered.slice((safePage - 1) * perPage, safePage * perPage)
+  const paged = filtered.slice((safePage - 1) * perPage, safePage * perPage)
 
   return (
     <div className='space-y-4 sm:space-y-6 animate-fade-in'>
@@ -91,7 +90,7 @@ const MyPurok = () => {
             </tbody>
           </table>
         </div>
-        {!hasActiveFilters && <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} />}
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} />
       </GlassCard>
     </div>
   )

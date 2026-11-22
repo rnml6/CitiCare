@@ -1,6 +1,6 @@
 // pages/BHW.jsx
 import { useDataRefresh } from '../utils/useDataRefresh'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search, Plus, Phone, Mail, ChevronRight, Pencil, Trash2,
@@ -271,16 +271,20 @@ const BHW = () => {
     finally { setShowDeleteConfirm(false); setDeleteTargetId(null) }
   }
 
-  const positions = [...new Set(bhws.map(b => b.position).filter(Boolean))].sort()
+  const positions = useMemo(() => [...new Set(bhws.map(b => b.position).filter(Boolean))].sort(), [bhws])
 
-  const filteredBHWs = sortByName(bhws.filter(bhw => {
-    const matchesSearch = !searchTerm || bhw.name?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.position?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.assignedPurok?.toLowerCase().includes(searchTerm.toLowerCase()) || focusGroupLabel(bhw.assignedFocusGroup)?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.username?.toLowerCase().includes(searchTerm.toLowerCase()) || bhw.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    if (!matchesSearch) return false
-    if (filterPosition !== 'all' && bhw.position !== filterPosition) return false
-    if (filterStatus !== 'all' && bhw.status !== filterStatus) return false
-    if (filterGroup !== 'all' && (bhw.assignedFocusGroup || '') !== filterGroup) return false
-    return true
-  }))
+  const sortedBHWs = useMemo(() => sortByName(bhws), [bhws])
+  const filteredBHWs = useMemo(() => {
+    const query = searchTerm.toLowerCase()
+    return sortedBHWs.filter(bhw => {
+      const matchesSearch = !query || bhw.name?.toLowerCase().includes(query) || bhw.position?.toLowerCase().includes(query) || bhw.assignedPurok?.toLowerCase().includes(query) || focusGroupLabel(bhw.assignedFocusGroup)?.toLowerCase().includes(query) || bhw.username?.toLowerCase().includes(query) || bhw.email?.toLowerCase().includes(query)
+      if (!matchesSearch) return false
+      if (filterPosition !== 'all' && bhw.position !== filterPosition) return false
+      if (filterStatus !== 'all' && bhw.status !== filterStatus) return false
+      if (filterGroup !== 'all' && (bhw.assignedFocusGroup || '') !== filterGroup) return false
+      return true
+    })
+  }, [sortedBHWs, searchTerm, filterPosition, filterStatus, filterGroup])
 
   const hasActiveFilters = filterPosition !== 'all' || filterStatus !== 'all' || filterGroup !== 'all' || searchTerm !== ''
 
@@ -291,7 +295,8 @@ const BHW = () => {
     : positionPresets
 
   const totalPages = Math.ceil(filteredBHWs.length / perPage)
-  const paginatedBHWs = hasActiveFilters ? filteredBHWs : filteredBHWs.slice((page - 1) * perPage, page * perPage)
+  const safePage = Math.min(page, Math.max(1, totalPages))
+  const paginatedBHWs = filteredBHWs.slice((safePage - 1) * perPage, safePage * perPage)
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -442,7 +447,7 @@ const BHW = () => {
             </GlassCard>
           ))}
         </div>
-        {!hasActiveFilters && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} total={filteredBHWs.length} perPage={perPage} />}
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filteredBHWs.length} perPage={perPage} />
         </>
       ) : (
         <GlassCard hover={false} className='text-center py-12'>

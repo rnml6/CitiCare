@@ -585,8 +585,6 @@ const Dashboard = () => {
         )}
       </div>
 
-      {loadingDashboardSections && <p role='status' className='text-sm text-white/65'>Loading dashboard sections?</p>}
-
       <Modal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}

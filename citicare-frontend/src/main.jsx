@@ -9,7 +9,7 @@ import { ToastProvider } from './components/Toast.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true }}>
     <AuthProvider>
       <ModalStackProvider>
         <ToastProvider>

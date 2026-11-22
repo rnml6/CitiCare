@@ -155,6 +155,8 @@ export const focusGroupsMatch = (groups, filter) => {
 // pinned to the top so a resident added from the current page is immediately
 // visible; after a reload `recentIds` is empty and the plain alphabetical
 // order is used again.
+const nameCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+
 export const sortResidentsAlphabetically = (residents, recentIds = []) => {
   const rank = new Map(recentIds.map((id, index) => [String(id), index]));
   return [...(residents || [])].sort((a, b) => {
@@ -165,7 +167,7 @@ export const sortResidentsAlphabetically = (residents, recentIds = []) => {
       if (bRank === undefined) return -1;
       return aRank - bRank;
     }
-    return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+    return nameCollator.compare(String(a.name || ''), String(b.name || ''))
       || String(a.id ?? '').localeCompare(String(b.id ?? ''));
   });
 };
@@ -176,7 +178,7 @@ export const sortResidentsAlphabetically = (residents, recentIds = []) => {
 export const sortByName = (items, key = 'name') => {
   const valueOf = item => String(item?.[key] ?? item?.name ?? '');
   return [...(items || [])].sort((a, b) =>
-    valueOf(a).localeCompare(valueOf(b), undefined, { sensitivity: 'base' })
+    nameCollator.compare(valueOf(a), valueOf(b))
     || String(a?.id ?? '').localeCompare(String(b?.id ?? '')));
 };
 

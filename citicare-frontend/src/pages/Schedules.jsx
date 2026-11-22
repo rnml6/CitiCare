@@ -678,7 +678,8 @@ const Schedules = () => {
   useEffect(() => { setPage(1) }, [searchTerm, scopeFilter, statusFilter, viewMode])
 
   const totalPages = Math.ceil(filteredSchedules.length / perPage)
-  const paginatedSchedules = hasActiveFilters ? filteredSchedules : filteredSchedules.slice((page - 1) * perPage, page * perPage)
+  const safePage = Math.min(page, Math.max(1, totalPages))
+  const paginatedSchedules = filteredSchedules.slice((safePage - 1) * perPage, safePage * perPage)
 
   const getScopeIcon = scope => { switch (scope) { case 'individual': return <User className='w-4 h-4' />; case 'purok': return <MapPin className='w-4 h-4' />; case 'barangay': return <Building2 className='w-4 h-4' />; default: return <User className='w-4 h-4' /> } }
   const getScopeColor = scope => { switch (scope) { case 'individual': return 'bg-blue-500/20 text-blue-300 border-blue-400/30'; case 'purok': return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'; case 'barangay': return 'bg-purple-500/20 text-purple-300 border-purple-400/30'; default: return 'bg-blue-500/20 text-blue-300 border-blue-400/30' } }
@@ -792,7 +793,7 @@ const Schedules = () => {
               <p className='text-white/65 text-sm mb-2'>No schedules found</p>
             </GlassCard>
           )}
-          {!hasActiveFilters && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} total={filteredSchedules.length} perPage={perPage} hidePageIndicatorOnMobile />}
+          <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filteredSchedules.length} perPage={perPage} hidePageIndicatorOnMobile />
         </>
       )}
 

@@ -422,13 +422,13 @@ const Purok = () => {
       return false
     return true
   }))
-  const hasActiveResidentFilters = residentSearch !== '' || filterFocusGroup !== 'all' || filterRiskLevel !== 'all'
   const totalResidentPages = Math.ceil(
     filteredResidents.length / residentsPerPage
   )
-  const paginatedResidents = hasActiveResidentFilters ? filteredResidents : filteredResidents.slice(
-    (residentPage - 1) * residentsPerPage,
-    residentPage * residentsPerPage
+  const safeResidentPage = Math.min(residentPage, Math.max(1, totalResidentPages))
+  const paginatedResidents = filteredResidents.slice(
+    (safeResidentPage - 1) * residentsPerPage,
+    safeResidentPage * residentsPerPage
   )
 
   const filteredSchedules = purokSchedules
@@ -453,11 +453,11 @@ const Purok = () => {
 
   useEffect(() => { setSchedulePage(1) }, [scheduleSearch, scheduleStatusFilter, scheduleScopeFilter])
 
-  const hasActiveScheduleFilters = scheduleSearch !== '' || scheduleStatusFilter !== 'all' || scheduleScopeFilter !== 'all'
   const totalSchedulePages = Math.max(1, Math.ceil(filteredSchedules.length / schedulesPerPage))
-  const paginatedSchedules = hasActiveScheduleFilters ? filteredSchedules : filteredSchedules.slice(
-    (schedulePage - 1) * schedulesPerPage,
-    schedulePage * schedulesPerPage
+  const safeSchedulePage = Math.min(schedulePage, Math.max(1, totalSchedulePages))
+  const paginatedSchedules = filteredSchedules.slice(
+    (safeSchedulePage - 1) * schedulesPerPage,
+    safeSchedulePage * schedulesPerPage
   )
 
   const monthNames = [
@@ -576,7 +576,7 @@ const Purok = () => {
   useEffect(() => { setPurokPage(1) }, [searchTerm, filterPurokRisk, filterBhwStatus])
   const totalPurokPages = Math.max(1, Math.ceil(filteredPuroks.length / puroksPerPage))
   const safePurokPage = Math.min(Math.max(1, purokPage), totalPurokPages)
-  const paginatedPuroks = hasActivePurokFilters ? filteredPuroks : filteredPuroks.slice(
+  const paginatedPuroks = filteredPuroks.slice(
     (safePurokPage - 1) * puroksPerPage,
     safePurokPage * puroksPerPage
   )
@@ -591,10 +591,9 @@ const Purok = () => {
     .filter(b => !bhwSearch || b.name?.toLowerCase().includes(bhwSearch.toLowerCase()))
     .slice()
     .sort((a, b) => a.name?.localeCompare(b.name))
-  const hasActiveBhwSearch = bhwSearch !== ''
   const totalAssignBhwPages = Math.max(1, Math.ceil(assignableBHWs.length / assignBhwsPerPage))
   const safeAssignBhwPage = Math.min(Math.max(1, assignBhwPage), totalAssignBhwPages)
-  const paginatedAssignableBhws = hasActiveBhwSearch ? assignableBHWs : assignableBHWs.slice(
+  const paginatedAssignableBhws = assignableBHWs.slice(
     (safeAssignBhwPage - 1) * assignBhwsPerPage,
     safeAssignBhwPage * assignBhwsPerPage
   )
@@ -844,9 +843,9 @@ const Purok = () => {
                   </div>
                 ))}
               </div>
-              {!hasActiveResidentFilters && totalResidentPages > 1 && (
+              {totalResidentPages > 1 && (
                 <Pagination
-                  page={residentPage}
+                  page={safeResidentPage}
                   totalPages={totalResidentPages}
                   onPageChange={setResidentPage}
                   className='!justify-end'
@@ -999,13 +998,13 @@ const Purok = () => {
                   )
                 })}
               </div>
-              {!hasActiveScheduleFilters && <Pagination
-                page={schedulePage}
+              <Pagination
+                page={safeSchedulePage}
                 totalPages={totalSchedulePages}
                 onPageChange={setSchedulePage}
                 total={filteredSchedules.length}
                 perPage={schedulesPerPage}
-              />}
+              />
               </>
             )
           ) : (
@@ -1107,13 +1106,13 @@ const Purok = () => {
                   ))
               )}
             </div>
-            {!hasActiveBhwSearch && <Pagination
+            <Pagination
               page={safeAssignBhwPage}
               totalPages={totalAssignBhwPages}
               onPageChange={setAssignBhwPage}
               total={assignableBHWs.length}
               perPage={assignBhwsPerPage}
-            />}
+            />
           </div>
         </Modal>
 
@@ -1361,13 +1360,13 @@ const Purok = () => {
             )
           })}
         </div>
-        {!hasActivePurokFilters && <Pagination
+        <Pagination
           page={safePurokPage}
           totalPages={totalPurokPages}
           onPageChange={setPurokPage}
           total={filteredPuroks.length}
           perPage={puroksPerPage}
-        />}
+        />
         </>
       ) : (
         <GlassCard hover={false} className='text-center py-12'>

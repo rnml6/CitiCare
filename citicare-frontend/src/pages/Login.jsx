@@ -232,7 +232,7 @@ const Login = () => {
                   onChange={e => setEmail(e.target.value)}
                   autoComplete='username'
                   required
-                  className='flex-1 bg-transparent border-none outline-none py-3 sm:py-[16px] text-[14px] sm:text-[15px] text-white placeholder:text-white/65 w-full'
+                  className='flex-1 bg-transparent border-none outline-none py-3 sm:py-[16px] text-[14px] sm:text-[15px] text-white placeholder:text-white/85 w-full'
                 />
               </div>
             </label>
@@ -273,7 +273,7 @@ const Login = () => {
                   onChange={e => setPassword(e.target.value)}
                   autoComplete='current-password'
                   required
-                  className='flex-1 bg-transparent border-none outline-none py-3 sm:py-[16px] text-[14px] sm:text-[15px] text-white placeholder:text-white/65 w-full'
+                  className='flex-1 bg-transparent border-none outline-none py-3 sm:py-[16px] text-[14px] sm:text-[15px] text-white placeholder:text-white/85 w-full'
                 />
                 <button
                   type='button'
@@ -342,7 +342,7 @@ const Login = () => {
             <button
               type='submit'
               disabled={loading}
-              className={`login-btn py-[10px] sm:py-[11px] border-none rounded-2xl text-white text-[14px] sm:text-[16px] font-semibold cursor-pointer ${error ? 'mt-0' : 'mt-2'}`}
+              className={`login-btn py-[10px] sm:py-[11px] rounded-2xl text-white text-[14px] sm:text-[16px] font-semibold cursor-pointer ${error ? 'mt-0' : 'mt-2'}`}
              
             >
               {loading ? 'Signing in...' : 'Sign in'}
@@ -435,18 +435,19 @@ const Login = () => {
 
         .login-btn {
           position: relative;
-          background-image: linear-gradient(135deg, #5f96d3, #3d639d);
+          border: 0.5px solid rgb(255 255 255 / 50%);
+          background-image: linear-gradient(135deg, var(--button-blue), #3d639d);
           color: #fff;
           box-shadow: 0 4px 14px rgba(95, 150, 211, 0.35);
           transition: box-shadow 0.3s ease, background-image 0.3s ease;
           animation: heartbeat 1.6s ease-in-out infinite, loginBtnEntrance 0.6s ease both;
         }
         .login-btn:hover:not(:disabled) {
-          background-image: linear-gradient(135deg, #84b2e2, #4a7abb);
+          background-image: linear-gradient(135deg, var(--button-blue-hover), var(--button-blue));
           box-shadow: 0 8px 22px rgba(95, 150, 211, 0.45);
         }
         .login-btn:active:not(:disabled) { transform: scale(0.98); }
-        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; animation: none; }
+        .login-btn:disabled { filter: saturate(0.5); cursor: not-allowed; animation: none; }
       `}</style>
     </div>
   )

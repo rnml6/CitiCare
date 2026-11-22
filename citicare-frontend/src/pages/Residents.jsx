@@ -1,6 +1,6 @@
 // pages/Residents.jsx
 import { useDataRefresh } from '../utils/useDataRefresh'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Search, Plus, Users as UsersIcon, Pencil, Trash2,
@@ -307,30 +307,35 @@ const Residents = () => {
     finally { setDeletingId(null); setShowDeleteConfirm(false); setDeleteTargetId(null) }
   }
 
-  const filteredResidents = sortResidentsAlphabetically(residents.filter(resident => {
-    const matchesSearch = !searchTerm || resident.name?.toLowerCase().includes(searchTerm.toLowerCase()) || resident.purok?.toLowerCase().includes(searchTerm.toLowerCase())
-    if (!matchesSearch) return false
-    if (filterPurok !== 'all' && resident.purok !== filterPurok) return false
-    if (filterRisk !== 'all' && resident.riskLevel !== filterRisk) return false
-    if (filterFocusGroup !== 'all') { if (filterFocusGroup === 'none') { if ((resident.focusGroups || []).length > 0) return false } else { if (!focusGroupsMatch(resident.focusGroups, filterFocusGroup)) return false } }
-    return true
-  }), recentlyAddedIds)
+  const sortedResidents = useMemo(() => sortResidentsAlphabetically(residents, recentlyAddedIds), [residents, recentlyAddedIds])
+  const filteredResidents = useMemo(() => {
+    const query = searchTerm.toLowerCase()
+    return sortedResidents.filter(resident => {
+      const matchesSearch = !query || resident.name?.toLowerCase().includes(query) || resident.purok?.toLowerCase().includes(query)
+      if (!matchesSearch) return false
+      if (filterPurok !== 'all' && resident.purok !== filterPurok) return false
+      if (filterRisk !== 'all' && resident.riskLevel !== filterRisk) return false
+      if (filterFocusGroup !== 'all') { if (filterFocusGroup === 'none') { if ((resident.focusGroups || []).length > 0) return false } else { if (!focusGroupsMatch(resident.focusGroups, filterFocusGroup)) return false } }
+      return true
+    })
+  }, [sortedResidents, searchTerm, filterPurok, filterRisk, filterFocusGroup])
 
   const hasActiveFilters = filterPurok !== 'all' || filterRisk !== 'all' || filterFocusGroup !== 'all' || searchTerm !== ''
 
-  const riskCounts = residents.reduce((counts, resident) => {
+  const riskCounts = useMemo(() => residents.reduce((counts, resident) => {
     const level = String(resident.riskLevel || '').toLowerCase()
     if (level.includes('critical')) counts.critical += 1
     else if (level.includes('high')) counts.high += 1
     else if (level.includes('moderate')) counts.moderate += 1
     else if (level.includes('low')) counts.low += 1
     return counts
-  }, { critical: 0, high: 0, moderate: 0, low: 0 })
+  }, { critical: 0, high: 0, moderate: 0, low: 0 }), [residents])
 
   useEffect(() => { setPage(1) }, [searchTerm, filterPurok, filterRisk, filterFocusGroup])
 
   const totalPages = Math.ceil(filteredResidents.length / perPage)
-  const paginatedResidents = hasActiveFilters ? filteredResidents : filteredResidents.slice((page - 1) * perPage, page * perPage)
+  const safePage = Math.min(page, Math.max(1, totalPages))
+  const paginatedResidents = filteredResidents.slice((safePage - 1) * perPage, safePage * perPage)
 
   if (loading) return <SkeletonResidentsPage count={6} />
 
@@ -497,7 +502,7 @@ const Residents = () => {
                   </GlassCard>
                 ))}
               </div>
-              {!hasActiveFilters && <Pagination page={page} totalPages={totalPages} onPageChange={setPage} total={filteredResidents.length} perPage={perPage} />}
+              <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filteredResidents.length} perPage={perPage} />
             </>
           ) : (
             <GlassCard hover={false} className='text-center py-12'>

@@ -75,6 +75,28 @@ describe('Schedules create flow', () => {
     scheduleApi.create.mockResolvedValue({ data: { success: true, data: { schedule_id: 99 } } })
   })
 
+  it('keeps broad search results paginated and resets the page when the query changes', async () => {
+    const schedules = Array.from({ length: 18 }, (_, index) => ({
+      ...createdSchedule,
+      id: index + 1,
+      residentName: `Search Resident ${index + 1}`,
+    }))
+    scheduleApi.getAll.mockResolvedValue({ data: { success: true, data: schedules } })
+    const user = userEvent.setup()
+    render(<MemoryRouter><Schedules /></MemoryRouter>)
+
+    const search = await screen.findByPlaceholderText(/Search by resident/)
+    await user.type(search, 'Search')
+    expect(screen.getAllByText(/^Search Resident \d+$/)).toHaveLength(8)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('Search Resident 9')).toBeInTheDocument()
+    expect(screen.queryByText('Search Resident 1')).not.toBeInTheDocument()
+
+    await user.type(search, ' Resident')
+    expect(screen.getByText('Search Resident 1')).toBeInTheDocument()
+    expect(screen.queryByText('Search Resident 9')).not.toBeInTheDocument()
+  })
+
   it('creates a schedule and shows it after the list refresh', async () => {
     const user = userEvent.setup()
     render(

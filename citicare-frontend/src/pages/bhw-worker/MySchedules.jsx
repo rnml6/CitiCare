@@ -598,7 +598,7 @@ const MySchedules = () => {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
   const safePage = Math.min(Math.max(1, page), totalPages)
-  const paged = hasActiveFilters ? filtered : filtered.slice((safePage - 1) * perPage, safePage * perPage)
+  const paged = filtered.slice((safePage - 1) * perPage, safePage * perPage)
 
   const dayModalSchedules = selectedDate?.dateStr
     ? filtered.filter(s => s.date && s.date.startsWith(selectedDate.dateStr))
@@ -780,7 +780,7 @@ const MySchedules = () => {
               <p className='text-white/65 text-sm mb-2'>No schedules found</p>
             </GlassCard>
           )}
-          {!hasActiveFilters && <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />}
+          <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />
         </>
       )}
 

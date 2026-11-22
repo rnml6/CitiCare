@@ -55,7 +55,7 @@ const Pagination = ({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
           aria-label='Previous page'
-          className='px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
+          className='px-3 py-1.5 rounded-lg text-xs font-medium border-[0.5px] border-white/50 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:text-white/65 disabled:cursor-not-allowed disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
         >
           <ChevronLeft className='w-3.5 h-3.5' />
           {!iconOnly && 'Prev'}
@@ -69,10 +69,10 @@ const Pagination = ({
             <button
               key={item}
               onClick={() => onPageChange(item)}
-              className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+              className={`w-8 h-8 rounded-lg border-[0.5px] border-white/50 text-xs font-semibold transition-colors ${
                 page === item
-                  ? 'bg-blue-500/80 text-white shadow-md shadow-blue-500/25'
-                  : 'border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/15'
+                  ? 'bg-[var(--button-blue)] text-white shadow-md shadow-blue-500/25'
+                  : 'bg-white/[0.06] text-white/85 hover:bg-white/15'
               }`}
             >
               {item}
@@ -83,7 +83,7 @@ const Pagination = ({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
           aria-label='Next page'
-          className='px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
+          className='px-3 py-1.5 rounded-lg text-xs font-medium border-[0.5px] border-white/50 bg-white/[0.06] text-white/85 hover:bg-white/15 disabled:text-white/65 disabled:cursor-not-allowed disabled:hover:bg-white/[0.06] flex items-center gap-1 transition-colors'
         >
           {!iconOnly && 'Next'}
           <ChevronRight className='w-3.5 h-3.5' />

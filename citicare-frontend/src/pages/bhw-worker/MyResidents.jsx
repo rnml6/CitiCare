@@ -423,7 +423,7 @@ const MyResidents = () => {
   const hasActiveFilters = search !== '' || filterRisk !== 'all' || filterGroup !== 'all'
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
   const safePage = Math.min(Math.max(1, page), totalPages)
-  const paged = hasActiveFilters ? filtered : filtered.slice((safePage - 1) * perPage, safePage * perPage)
+  const paged = filtered.slice((safePage - 1) * perPage, safePage * perPage)
   const focusLabel = data?.focusGroup ? (FOCUS_LABELS[data.focusGroup] || data.focusGroup) : null
   // Header + stat cards follow the active tab: handled purok name/stats on
   // the purok tab, focus-group name/stats (computed from its barangay-wide
@@ -648,7 +648,7 @@ const MyResidents = () => {
                   </GlassCard>
                 ))}
               </div>
-              {!hasActiveFilters && <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />}
+              <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} total={filtered.length} perPage={perPage} hidePageIndicatorOnMobile />
             </>
           ) : (
             <GlassCard hover={false} className='text-center py-12'>

@@ -160,7 +160,7 @@ const CalendarView = ({
                   <span
                     title={`${count} schedule${count !== 1 ? 's' : ''}`}
                     aria-label={`${count} schedule${count !== 1 ? 's' : ''}`}
-                    className='text-[10px] px-1 rounded font-medium bg-blue-500/30 text-blue-300'
+                    className='text-[11px] px-1 rounded font-semibold bg-blue-500/30 text-blue-100'
                   >
                     {count}
                   </span>
@@ -171,7 +171,7 @@ const CalendarView = ({
                 {schedules.slice(0, PREVIEW_COUNT).map(schedule => (
                   <div
                     key={schedule.id}
-                    className={`text-[10px] px-1 py-px rounded truncate flex items-center gap-0.5 cursor-pointer ${
+                    className={`text-[11px] px-1 py-px rounded truncate flex items-center gap-0.5 cursor-pointer ${
                       STATUS_CHIP[schedule.status] || 'bg-white/10 text-white/85'
                     }`}
                     onClick={e => {
@@ -182,11 +182,11 @@ const CalendarView = ({
                     }}
                   >
                     <ScopeIcon scope={schedule.scope} />
-                    <span className='truncate'>{getChipTitle(schedule)}</span>
+                    <span className='truncate' title={getChipTitle(schedule)}>{getChipTitle(schedule)}</span>
                   </div>
                 ))}
                 {count > PREVIEW_COUNT && (
-                  <div className='text-[10px] text-white/65 px-1'>
+                  <div className='text-[11px] text-white/85 px-1'>
                     +{count - PREVIEW_COUNT} more
                   </div>
                 )}

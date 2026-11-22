@@ -1,6 +1,6 @@
 // pages/Medicines.jsx
 import { useDataRefresh } from '../utils/useDataRefresh'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Pencil, Trash2, Save, Search, X } from 'lucide-react'
 import { medicineApi } from '../api/medicineApi'
 import GlassCard from '../components/GlassCard'
@@ -252,24 +252,28 @@ const Medicines = () => {
   ]
 
   // Filter medicines (client-side, so switching filters never reloads the page)
-  const filteredMedicines = sortByName(medicines.filter(medicine => {
-    if (
-      searchTerm &&
-      !medicine.medicine_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false
-    }
-    if (filterCategory !== 'all' && medicine.category !== filterCategory) {
-      return false
-    }
-    if (
-      filterTargetGroup !== 'all' &&
-      medicine.target_group !== filterTargetGroup
-    ) {
-      return false
-    }
-    return true
-  }), 'medicine_name')
+  const sortedMedicines = useMemo(() => sortByName(medicines, 'medicine_name'), [medicines])
+  const filteredMedicines = useMemo(() => {
+    const query = searchTerm.toLowerCase()
+    return sortedMedicines.filter(medicine => {
+      if (
+        query &&
+        !medicine.medicine_name?.toLowerCase().includes(query)
+      ) {
+        return false
+      }
+      if (filterCategory !== 'all' && medicine.category !== filterCategory) {
+        return false
+      }
+      if (
+        filterTargetGroup !== 'all' &&
+        medicine.target_group !== filterTargetGroup
+      ) {
+        return false
+      }
+      return true
+    })
+  }, [sortedMedicines, searchTerm, filterCategory, filterTargetGroup])
 
   const hasActiveFilters = filterCategory !== 'all' || filterTargetGroup !== 'all' || searchTerm !== ''
 
@@ -284,9 +288,10 @@ const Medicines = () => {
   }, [searchTerm, filterTargetGroup, filterCategory])
 
   const totalPages = Math.ceil(filteredMedicines.length / perPage)
-  const paginatedMedicines = hasActiveFilters ? filteredMedicines : filteredMedicines.slice(
-    (page - 1) * perPage,
-    page * perPage
+  const safePage = Math.min(page, Math.max(1, totalPages))
+  const paginatedMedicines = filteredMedicines.slice(
+    (safePage - 1) * perPage,
+    safePage * perPage
   )
 
   if (loading) return <SkeletonMedicinesPage count={6} />
@@ -479,13 +484,13 @@ const Medicines = () => {
           </p>
         </GlassCard>
       )}
-      {!hasActiveFilters && <Pagination
-        page={page}
+      <Pagination
+        page={safePage}
         totalPages={totalPages}
         onPageChange={setPage}
         total={filteredMedicines.length}
         perPage={perPage}
-      />}
+      />
 
       {/* Add/Edit Modal */}
       <Modal
