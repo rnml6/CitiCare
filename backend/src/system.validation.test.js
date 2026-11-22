@@ -986,6 +986,7 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
   t.mock.timers.enable({ apis: ['Date'], now: new Date('2024-05-30T17:00:00Z') })
   const planningActions = new Set()
   const outreachActions = new Set()
+  const actionsByPosition = [new Set(), new Set()]
   const summaries = new Set()
   const currentSummaries = new Set()
   const healthPrograms = new Set()
@@ -1015,7 +1016,8 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
     { schedule_id: 3, resident_id: 'resident-2', status: 'Completed', date: '2099-01-01' },
     { schedule_id: 4, resident_id: 'resident-1', status: 'Missed', date: '2020-01-01' },
     { schedule_id: 5, resident_id: 'resident-1', status: 'Cancelled', date: '2024-03-01' },
-    { schedule_id: 6, resident_id: 'resident-1', status: 'Completed', date: '2023-06-01' }
+    { schedule_id: 6, resident_id: 'resident-1', status: 'Completed', date: '2023-06-01' },
+    { schedule_id: 7, resident_id: 'resident-2', status: 'Missed', date: '2024-05-01' }
   ])
   for (const period of ['monthly', 'quarterly', 'annual', 'annually']) {
     const response = await request('GET', `/api/dashboard/ai-recommendation?period=${period}`, { token: adminToken })
@@ -1055,7 +1057,7 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
     assert.ok(response.body.data.keyFindings.some(finding =>
       finding.startsWith(`1 resident has an outstanding missed health consultation as of ${today}.`)))
     const outreach = response.body.data.recommendations.find(item =>
-      item.targetGroup === '1 resident with outstanding missed health consultations')
+      item.targetGroup === '1 resident reached with consultations missed during the selected period')
     assert.ok(outreach)
     outreachActions.add(outreach.action)
     const averageFinding = {
@@ -1074,18 +1076,22 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
     healthPrograms.add(response.body.data.healthProgramRecommendation.programs[0].program)
     const plan = response.body.data.recommendations.find(item => item.category === 'Planning')
     assert.ok(plan, `expected a planning action for ${period}`)
+    assert.equal(response.body.data.recommendations[0], plan)
+    response.body.data.recommendations.slice(0, 2).forEach((item, index) =>
+      actionsByPosition[index].add(item.action))
     assert.match(plan.timeline, { monthly: /weekly/, quarterly: /quarterly/, annual: /annual/ }[reportedPeriod])
     assert.match(plan.action, {
-      monthly: /confirm upcoming appointments/,
-      quarterly: /increase in recorded cancellations/,
-      annual: /verify which residents have no contact recorded/,
+      monthly: /review missed appointments from this month/,
+      quarterly: /review this quarter’s cancellations for residents reached/,
+      annual: /documented care needs for residents reached/,
     }[reportedPeriod])
-    assert.match(plan.evidence, { monthly: /unresolved missed consultations/, quarterly: /cancelled/, annual: /12-month window/ }[reportedPeriod])
+    assert.match(plan.evidence, { monthly: /unresolved consultation missed/, quarterly: /cancelled/, annual: /12-month window/ }[reportedPeriod])
     assert.ok(response.body.data.healthProgramRecommendation.programs[0].evidence)
     planningActions.add(plan.action)
   }
   assert.equal(planningActions.size, 3)
   assert.equal(outreachActions.size, 3)
+  assert.deepEqual(actionsByPosition.map(actions => actions.size), [3, 3])
   assert.equal(summaries.size, 3)
   assert.equal(currentSummaries.size, 1)
   assert.equal(healthPrograms.size, 3)
@@ -1095,9 +1101,9 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
   const decline = await request('GET', '/api/dashboard/ai-recommendation?period=monthly', { token: adminToken })
   expectStatus(decline, 200)
   assert.match(decline.body.data.recommendations.find(item => item.category === 'Planning').action,
-    /verify the drop in recorded activity/)
+    /review missed appointments from this month/)
   assert.match(decline.body.data.healthProgramRecommendation.programs[0].activities[0],
-    /Reconcile this month’s encounter and completion records/)
+    /this month’s unresolved missed consultations for residents reached/)
   fake.tables.get('medical_histories').push({
     history_id: 9, resident_id: 'resident-with-older-encounter', date: '2024-01-15'
   })
@@ -1118,6 +1124,15 @@ test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in
   assert.equal(annualProgram.targetGroup, annualPlan.targetGroup)
   assert.match(annualProgram.evidence, /Asthma/)
   assert.doesNotMatch(monthlyProgram.evidence, /Asthma/)
+  assert.ok(decline.body.data.recommendations.every(item => !item.targetGroup.includes('critical-risk')))
+  assert.ok(annualCoverage.body.data.recommendations.some(item => item.targetGroup.includes('1 critical-risk')))
+  assert.equal(annualCoverage.body.data.recommendations[0].priority, 'high')
+  fake.tables.set('medical_histories', [])
+  fake.tables.set('schedules', [{ schedule_id: 8, resident_id: 'resident-2', status: 'Missed', date: today }])
+  const noContact = await request('GET', '/api/dashboard/ai-recommendation?period=monthly', { token: adminToken })
+  expectStatus(noContact, 200)
+  assert.deepEqual(noContact.body.data.recommendations, [])
+  assert.deepEqual(noContact.body.data.healthProgramRecommendation.programs, [])
   expectStatus(await request('GET', '/api/dashboard/ai-recommendation?period=weekly', { token: adminToken }), 400)
 })
 
@@ -1192,7 +1207,7 @@ test('dashboard: AI findings include missed care while risk lists include only h
   assert.equal(recommendationData.residentsWithMissedConsultations, analytics.body.data.length)
   assert.ok(report.body.data.keyFindings.some(finding => finding.startsWith(`19 residents have outstanding missed health consultations as of ${today}.`)))
   assert.ok(report.body.data.keyFindings.every(finding => !/22 (consultations|missed|residents)/i.test(finding)))
-  assert.ok(report.body.data.recommendations.some(r => r.targetGroup === '19 residents with outstanding missed health consultations'))
+  assert.ok(report.body.data.recommendations.every(r => r.category !== 'Outreach'))
   const priorities = report.body.data.priorityResidents.recommendations
   assert.deepEqual(priorities.map(r => r.residentId), [1, 2, 3, 4, 5, 6, 20])
   assert.equal(priorities.filter(r => r.riskLevel === 'Critical Risk').length, 6)

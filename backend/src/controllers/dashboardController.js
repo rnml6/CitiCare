@@ -1759,7 +1759,6 @@ const classifyPurokAvgScore = (avg) => getRiskClassification(avg).replace(' Risk
 // Guarantees every section exists so the frontend never renders empty/broken
 // panels when the model omits a key or returns a partial payload.
 const reportNameKey = value => String(value || '').trim().toLowerCase();
-const mentionsMissedConsultation = text => /\b(?:missed|no[- ]shows?|did not attend|unattended)\b/i.test(text);
 
 const normalizeAIAnalysis = (parsed = {}, ctx = {}) => {
   const p = parsed && typeof parsed === 'object' ? parsed : {};
@@ -1924,7 +1923,7 @@ const buildRuleBasedAIReport = (ctx, isWorkerScope = false) => {
   if (programs.length === 0 && residentsWithMissedConsultations > 0) {
     programs.push({
       program: 'Consultation Follow-up',
-      targetGroup: 'Residents with outstanding missed health consultations',
+      targetGroup: 'Residents reached with consultations missed during the selected period',
       objective: 'Help residents resume scheduled care.',
       activities: ['Organize outreach calls and coordinate available appointment slots with health-center staff'],
       timeline: 'At the next outreach session',
@@ -1933,14 +1932,22 @@ const buildRuleBasedAIReport = (ctx, isWorkerScope = false) => {
   }
   const recommendations = [];
   if (criticalResidents.length + highRiskResidents.length > 0) recommendations.push({
-    action: `${coordinator} should contact the highest-risk residents and coordinate clinical assessment based on current symptoms.`,
+    action: {
+      monthly: `${coordinator} should contact high- and critical-risk residents and use the next clinic schedule to arrange clinician review for open cases.`,
+      quarterly: `${coordinator} should contact high- and critical-risk residents promptly and review whether referrals remain open across the quarter’s monthly follow-up lists.`,
+      annual: `${coordinator} should contact high- and critical-risk residents promptly and use documented follow-up gaps to plan next year’s outreach coverage.`,
+    }[period],
     priority: criticalResidents.length > 0 ? 'high' : 'medium', category: 'Clinical',
     targetGroup: `${criticalResidents.length} critical-risk and ${highRiskResidents.length} high-risk residents`,
     timeline: criticalResidents.length > 0 ? 'Contact critical-risk residents today' : 'Within 2 weeks',
     expectedImpact: 'Record contact attempts and assessment arrangements.',
   });
   if (vulnerable.pregnant > 0) recommendations.push({
-    action: `${coordinator} should confirm prenatal follow-up dates with residents and the health-center midwife.`,
+    action: {
+      monthly: `${coordinator} should confirm the next prenatal appointments with residents and the health-center midwife.`,
+      quarterly: `${coordinator} should review prenatal follow-up records across the quarter’s months and bring recurring scheduling barriers to the health-center midwife.`,
+      annual: `${coordinator} should review documented prenatal coverage gaps with the health-center midwife and plan outreach for next year.`,
+    }[period],
     priority: 'medium', category: 'Prevention', targetGroup: `${vulnerable.pregnant} pregnant residents`,
     timeline: 'Within 2 weeks', expectedImpact: 'Document next prenatal appointments.',
   });
@@ -2217,10 +2224,15 @@ export const getAIRecommendation = async (req, res) => {
     }
 
     const topDiseases = [...diseaseStats].sort(([,a],[,b]) => b - a).slice(0, 10).map(([name, count]) => ({ name, count }));
+    const reachedCritical = criticalResidents.filter(resident => periodContacts.has(resident.resident_id));
+    const reachedHigh = highRiskResidents.filter(resident => periodContacts.has(resident.resident_id));
+    const scopedMissedCount = new Set(missedConsultations
+      .filter(row => row.date >= startDateStr && periodContacts.has(row.resident_id))
+      .map(row => row.resident_id)).size;
     const periodHealth = {
       residentsReached: periodContacts.size,
-      criticalRisk: criticalResidents.filter(resident => periodContacts.has(resident.resident_id)).length,
-      highRisk: highRiskResidents.filter(resident => periodContacts.has(resident.resident_id)).length,
+      criticalRisk: reachedCritical.length,
+      highRisk: reachedHigh.length,
       outstandingMissedConsultations: [...periodContacts].filter(id => missedByResident.has(id)).length,
       vulnerableGroups: periodVulnerable,
       topConditions: [...periodDiseaseStats].sort(([, a], [, b]) => b - a).slice(0, 10)
@@ -2228,9 +2240,9 @@ export const getAIRecommendation = async (req, res) => {
     };
 
     const reportCtx = {
-      criticalResidents, highRiskResidents, purokBreakdown,
+      criticalResidents: reachedCritical, highRiskResidents: reachedHigh, purokBreakdown,
       vulnerable: periodHealth.vulnerableGroups, topDiseases: periodHealth.topConditions,
-      residentsWithMissedConsultations, totalResidents: effectiveResidents.length,
+      residentsWithMissedConsultations: scopedMissedCount, totalResidents: periodContacts.size,
       activeBHWs, period,
     };
 
@@ -2282,14 +2294,12 @@ export const getAIRecommendation = async (req, res) => {
     promptData.periodAverages = periodAverages;
     const completedActivities = periodSchedulesByStatus.Completed || 0;
     const cancelledActivities = periodSchedulesByStatus.Cancelled || 0;
-    const monthsWithActivity = Object.keys(periodSchedulesByMonth).length;
-    const monthsWithCancellations = Object.values(periodSchedulesByMonth).filter(month => month.Cancelled > 0).length;
+    const reachedSchedules = effectiveSchedules.filter(row => periodContacts.has(row.resident_id) && row.status !== 'Missed');
+    const reachedCancellations = reachedSchedules.filter(row => row.status === 'Cancelled');
+    const reachedCompletions = reachedSchedules.filter(row => row.status === 'Completed').length;
+    const monthsWithActivity = new Set(reachedSchedules.map(row => row.date.slice(0, 7))).size;
+    const monthsWithCancellations = new Set(reachedCancellations.map(row => row.date.slice(0, 7))).size;
     const residentsWithRecordedContact = periodContacts.size;
-    const residentsWithoutRecordedContact = residentIds.length - residentsWithRecordedContact;
-    const monthlyActivityDeclined = completedActivities < historicalActivity.completedActivities
-      || encounters.length < historicalActivity.encounters;
-    const quarterlyCancellationsRose = cancelledActivities > historicalActivity.cancelledActivities;
-    const annualContactDeclined = residentsWithRecordedContact < historicalActivity.residentsWithRecordedContact;
     const comparisonEvidence = {
       monthly: `The preceding month recorded ${historicalActivity.encounters} medical encounters and ${historicalActivity.completedActivities} completed activities.`,
       quarterly: `The preceding quarter recorded ${historicalActivity.completedActivities} completed and ${historicalActivity.cancelledActivities} cancelled activities.`,
@@ -2298,15 +2308,15 @@ export const getAIRecommendation = async (req, res) => {
     const periodPlan = {
       monthly: {
         summaryEvidence: `The last month recorded ${encounters.length} medical encounters and ${completedActivities} completed activities, averaging ${periodAverages.encounters} encounters per week.`,
-        interventionEvidence: `Of the ${periodHealth.residentsReached} residents reached this month, ${periodHealth.criticalRisk + periodHealth.highRisk} are currently at critical or high risk and ${periodHealth.outstandingMissedConsultations} have unresolved missed consultations.`,
-        programEvidence: `${encounters.length} medical encounters and ${completedActivities} completed activities were recorded in the last month.`,
+        interventionEvidence: `Of the ${periodHealth.residentsReached} residents reached this month, ${periodHealth.criticalRisk + periodHealth.highRisk} are currently at critical or high risk and ${scopedMissedCount} have an unresolved consultation missed within the month.`,
+        programEvidence: `${periodHealth.residentsReached} residents had documented contact this month, including ${reachedCompletions} completed individual activities.`,
         focus: 'Immediate follow-up and appointment coordination',
         program: 'Monthly Follow-up Review',
-        activities: monthlyActivityDeclined
-          ? ['Reconcile this month’s encounter and completion records, then review open follow-ups at the next clinic session.']
+        activities: scopedMissedCount
+          ? ['Review this month’s unresolved missed consultations for residents reached and coordinate replacement appointments.']
           : ['Use the next clinic session to confirm upcoming appointments and record outcomes for open follow-ups.'],
-        action: monthlyActivityDeclined
-          ? `${planningLead} should verify the drop in recorded activity and contact residents whose follow-ups are still open.`
+        action: scopedMissedCount
+          ? `${planningLead} should review missed appointments from this month and rebook follow-ups for affected residents already reached.`
           : `${planningLead} should confirm upcoming appointments and record outcomes for residents with open follow-ups.`,
         timeline: 'At the next weekly schedule review',
         expectedImpact: 'Track appointments confirmed and follow-ups closed.',
@@ -2316,15 +2326,15 @@ export const getAIRecommendation = async (req, res) => {
       },
       quarterly: {
         summaryEvidence: `The last three months recorded ${completedActivities} completed and ${cancelledActivities} cancelled activities, averaging ${periodAverages.scheduledActivities} scheduled activities per month.`,
-        interventionEvidence: `${cancelledActivities} activities were cancelled across ${monthsWithCancellations} calendar months in the reporting window.`,
-        programEvidence: `${activityCount} scheduled activities were recorded across ${monthsWithActivity} calendar months, excluding missed activities.`,
+        interventionEvidence: `${reachedCancellations.length} activities for residents reached were cancelled across ${monthsWithCancellations} calendar months in the reporting window.`,
+        programEvidence: `${reachedSchedules.length} scheduled activities for residents reached were recorded across ${monthsWithActivity} calendar months, excluding missed activities.`,
         focus: 'Service attendance and recurring barriers',
         program: 'Quarterly Attendance Review',
-        activities: quarterlyCancellationsRose
+        activities: reachedCancellations.length
           ? ['Review cancelled activities by month, document verified barriers, and test one scheduling adjustment next quarter.']
           : ['Track monthly completion and cancellation totals and review any recurring barriers at the next quarterly meeting.'],
-        action: quarterlyCancellationsRose
-          ? `${planningLead} should review the increase in recorded cancellations and propose a scheduling change where the records show a recurring barrier.`
+        action: reachedCancellations.length
+          ? `${planningLead} should review this quarter’s cancellations for residents reached and propose scheduling changes where a recurring barrier is documented.`
           : `${planningLead} should monitor monthly cancellations and review clinic scheduling when a recurring barrier is documented.`,
         timeline: 'At the next quarterly service review',
         expectedImpact: 'Track recurring barriers identified and scheduling adjustments made.',
@@ -2334,18 +2344,12 @@ export const getAIRecommendation = async (req, res) => {
       },
       annual: {
         summaryEvidence: `Over the last 12 months, ${residentsWithRecordedContact} of ${residentIds.length} current residents had a recorded encounter or completed individual activity. The average number of encounters per quarter was ${periodAverages.encounters}.`,
-        interventionEvidence: `${residentIds.length - residentsWithRecordedContact} current residents had no encounter or completed individual activity recorded in this 12-month window.`,
-        programEvidence: `${completedActivities} completed activities were recorded. ${residentsWithRecordedContact} current residents had a recorded encounter or completed individual activity during the year.`,
+        interventionEvidence: `${residentsWithRecordedContact} residents had documented contact in this 12-month window, including ${periodHealth.criticalRisk + periodHealth.highRisk} currently at critical or high risk.`,
+        programEvidence: `${reachedCompletions} completed individual activities were recorded for residents reached this year.`,
         focus: 'Service coverage and planning for the next year',
         program: 'Annual Service Coverage Review',
-        activities: annualContactDeclined
-          ? ['Verify where documented resident contact fell and assign next-year outreach for confirmed gaps.']
-          : ['Review residents without documented contact and set quarterly coverage checkpoints for next year.'],
-        action: annualContactDeclined
-          ? `${planningLead} should verify the decline in recorded resident contact before assigning next-year outreach to confirmed gaps.`
-          : `${planningLead} should ${residentsWithoutRecordedContact > 0
-            ? 'verify which residents have no contact recorded and use confirmed gaps to assign next-year outreach.'
-            : 'review how recorded contact was maintained and document the outreach and staffing needed next year.'}`,
+        activities: ['Review the year’s records for residents reached, then assign staff and set quarterly follow-up checkpoints for next year.'],
+        action: `${planningLead} should use the year’s documented care needs for residents reached to assign next-year outreach and staffing.`,
         timeline: 'During annual service planning',
         expectedImpact: 'Record coverage gaps, planned outreach activities, and responsible staff.',
         interventionFocus: 'Use the year’s activity records to identify where outreach coverage should be verified and which staffing or service changes should be considered.',
@@ -2390,11 +2394,7 @@ export const getAIRecommendation = async (req, res) => {
       comparisonEvidence,
       encounterBreakdown,
     ].filter(Boolean).join(' ');
-    const periodTargetGroup = period === 'annual' && residentsWithoutRecordedContact > 0
-      ? `${residentsWithoutRecordedContact} residents without documented contact in the past year`
-      : periodHealth.residentsReached > 0
-        ? `${periodHealth.residentsReached} residents reached in the selected period`
-        : worker ? 'Residents in the assigned caseload' : 'Barangay residents';
+    const periodTargetGroup = `${periodHealth.residentsReached} residents reached in the selected period`;
     const periodConditionEvidence = periodTopCondition
       ? `Among residents reached${worker ? ' in the assigned purok' : ''}, ${periodTopCondition.name} was the most common recorded chronic condition (${periodTopCondition.count} resident${periodTopCondition.count === 1 ? '' : 's'}).`
       : '';
@@ -2406,10 +2406,7 @@ export const getAIRecommendation = async (req, res) => {
         if (highRiskResidents.length) followUp.push(`Arrange follow-up this week for the ${highRiskResidents.length} high-risk resident${highRiskResidents.length === 1 ? '' : 's'}.`);
         findings.push(followUp.join(' '));
       }
-      const generatedRecommendations = analysis.recommendations.filter(r =>
-        ![r.action, r.targetGroup, r.expectedImpact].some(mentionsMissedConsultation)
-      );
-      const recommendations = generatedRecommendations.length ? generatedRecommendations : [...fallbackReport.recommendations];
+      const recommendations = [...fallbackReport.recommendations];
       const count = residentsWithMissedConsultations;
       if (count > 0) {
         const scope = worker ? ' in your assigned caseload' : '';
@@ -2418,14 +2415,14 @@ export const getAIRecommendation = async (req, res) => {
           : `${count} residents${scope} have outstanding missed health consultations as of ${endDateStr}.`;
         findings.push(`${finding} Check attendance barriers and help rebook follow-ups.`);
       }
-      if (count > 0) {
+      if (scopedMissedCount > 0) {
         const lead = worker ? 'The assigned BHW' : (activeBHWs > 0 ? 'Assigned BHWs' : 'The health-center coordinator');
         const nextRecommendation = recommendations.findIndex(r => r.priority !== 'high');
         recommendations.splice(nextRecommendation < 0 ? Math.min(recommendations.length, 3) : nextRecommendation, 0, {
           action: `${lead} should ${periodPlan.outreachAction}`,
           priority: 'medium',
           category: 'Outreach',
-          targetGroup: `${count} resident${count === 1 ? '' : 's'} with outstanding missed health consultations`,
+          targetGroup: `${scopedMissedCount} resident${scopedMissedCount === 1 ? '' : 's'} reached with consultations missed during the selected period`,
           timeline: 'Within one week',
           expectedImpact: 'Track residents contacted and follow-up appointments rebooked.',
         });
@@ -2466,9 +2463,8 @@ export const getAIRecommendation = async (req, res) => {
         const [count, group, nextStep] = groupFinding;
         findings.push(`Records list ${count} ${group}. ${nextStep}`);
       }
-      const programs = analysis.healthProgramRecommendation.programs.length
-        ? analysis.healthProgramRecommendation.programs
-        : fallbackReport.healthProgramRecommendation.programs;
+      const programs = fallbackReport.healthProgramRecommendation.programs;
+      const interventionPriority = { high: 0, medium: 1, low: 2 };
       return {
         ...analysis,
         summary: `${periodSummary} ${currentSummary}`,
@@ -2477,8 +2473,7 @@ export const getAIRecommendation = async (req, res) => {
         periodResidentSummary,
         keyFindings: findings.length ? findings : fallbackReport.keyFindings,
         riskAreas,
-        recommendations: [
-          ...recommendations.slice(0, 1),
+        recommendations: periodContacts.size ? [
           {
             action: periodPlan.action,
             priority: 'medium',
@@ -2486,19 +2481,19 @@ export const getAIRecommendation = async (req, res) => {
             targetGroup: periodTargetGroup,
             timeline: periodPlan.timeline,
             expectedImpact: periodPlan.expectedImpact,
-            evidence: [periodPlan.interventionEvidence, periodConditionEvidence, comparisonEvidence].filter(Boolean).join(' '),
+            evidence: [periodPlan.interventionEvidence, periodConditionEvidence].filter(Boolean).join(' '),
           },
-          ...recommendations.slice(1, 3),
-        ],
+          ...recommendations.slice(0, 3),
+        ].sort((a, b) => interventionPriority[a.priority] - interventionPriority[b.priority]) : [],
         healthProgramRecommendation: {
-          programs: residentIds.length || activityCount ? [{
+          programs: periodContacts.size ? [{
             program: periodPlan.program,
             targetGroup: periodTargetGroup,
             objective: periodPlan.focus,
             activities: periodPlan.activities,
             timeline: periodPlan.timeline,
             expectedOutcome: periodPlan.expectedImpact,
-            evidence: [periodPlan.programEvidence, periodConditionEvidence, comparisonEvidence].filter(Boolean).join(' '),
+            evidence: [periodPlan.programEvidence, periodConditionEvidence].filter(Boolean).join(' '),
           }, ...programs.slice(0, 2)] : [],
         },
         priorityResidents: { title: 'Priority Residents', recommendations: priorityResidents },
@@ -2508,11 +2503,11 @@ export const getAIRecommendation = async (req, res) => {
     const reportRules = `- Use the selected reporting period and its date range when discussing scheduled activity. Focus this report on ${periodPlan.focus.toLowerCase()}. Keep urgent follow-up timelines based on clinical priority.
 - Interventions: ${periodPlan.interventionFocus}
 - Health programs: ${periodPlan.programFocus}
-- Compare the current period with historicalActivity, which covers the immediately preceding, non-overlapping window. Use recorded changes to inform interventions and programs. Zero records alone do not establish that care was unavailable.
+- Use historicalActivity for comparison with the immediately preceding, non-overlapping window. Zero records alone do not establish that care was unavailable.
 - Leave keyFindings, riskAreas, and priorityResidents empty. The application builds these sections from current records.
 - Start the summary with the most important recorded care need for this scope. Use plain language and leave unsupported sections empty.
 - For every proposed action, identify the recorded issue, who should follow up, when to start, and a measurable follow-up outcome. Prioritize checking current needs, coordinating appointments, and documenting outcomes.
-- Base period interventions and health programs on periodHealth, periodEncounterCount, and the schedule breakdown. periodHealth describes the current conditions and risk of residents with documented contact during the selected window. Use the broader current registry for urgent resident follow-up, outstanding missed consultations, and annual coverage gaps. Do not present current counts as new cases, or older outstanding needs as events in the reporting period.
+- Base interventions and health programs on records for residents with documented contact during the selected window. Use historical comparisons and the broader current registry for report context only. Do not present current conditions as newly diagnosed cases.
 - Use risk scores to prioritize outreach. Clinical staff determine diagnosis, urgency, tests, and treatment. Do not prescribe, change medications, infer symptoms, or promise clinical outcomes.`;
 
     const workerPrompt = `As a Barangay Health Worker AI for Barangay Gumamela, analyze this health data for your assigned caseload and return prioritized, actionable health interventions.
