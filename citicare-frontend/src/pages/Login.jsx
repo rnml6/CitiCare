@@ -98,7 +98,7 @@ const Login = () => {
      
     >
       {/* Blue overlay */}
-      <div className='fixed inset-0 bg-gradient-to-br from-blue-950/80 via-blue-900/70 to-blue-800/55 backdrop-blur-[3px] z-[1]' />
+      <div className='fixed inset-0 bg-gradient-to-br from-blue-950/[0.86] via-blue-900/[0.76] to-blue-800/[0.66] backdrop-blur-[5px] z-[1]' />
 
       {/* Initial View */}
       <div

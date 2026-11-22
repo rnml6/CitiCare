@@ -49,7 +49,7 @@ function App () {
           className='bg-pan'
           style={{ backgroundImage: `url(${gumamelaBg})` }}
         />
-        <div className='absolute inset-0 bg-gradient-to-br from-blue-950/90 via-blue-900/85 to-indigo-950/80 backdrop-blur-sm' />
+        <div className='absolute inset-0 bg-gradient-to-br from-blue-950/[0.91] via-blue-900/[0.86] to-indigo-950/[0.86] backdrop-blur-[6px]' />
 
         {/* soft ambient glows */}
         <div className='absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500/20 blur-3xl pointer-events-none' />
@@ -108,7 +108,7 @@ function App () {
 
       {/* Overlay for all pages except login */}
       {isAuthenticated && (
-        <div className='fixed inset-0 bg-gradient-to-br from-blue-950/85 via-blue-900/80 to-indigo-950/75 backdrop-blur-[3px] z-0' />
+        <div className='fixed inset-0 bg-gradient-to-br from-blue-950/[0.91] via-blue-900/[0.86] to-indigo-950/[0.81] backdrop-blur-[5px] z-0' />
       )}
 
       {/* Animated background elements for authenticated pages */}
