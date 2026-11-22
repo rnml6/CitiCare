@@ -497,10 +497,10 @@ const Header = () => {
                             </div>
                             <div className='flex-1 min-w-0'>
                               <div className='flex items-center justify-between'>
-                                <span className='text-[10px] text-white/65'>
+                                <span className='text-[11px] text-white/85'>
                                   {notif.type}
                                 </span>
-                                <span className='text-[10px] text-white/65'>
+                                <span className='text-[11px] text-white/85'>
                                   {formatNotifDate(notif.date)}
                                 </span>
                               </div>

@@ -61,7 +61,7 @@ const MobileBottomNav = () => {
                 strokeWidth={active ? 2.2 : 1.8}
               />
               {navItems.length !== 6 && (
-                <span className='text-[10px] leading-none font-medium truncate max-w-full'>
+                <span className='text-[11px] leading-tight font-semibold text-center max-w-full break-words'>
                   {item.label}
                 </span>
               )}

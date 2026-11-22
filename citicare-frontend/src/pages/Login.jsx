@@ -436,14 +436,14 @@ const Login = () => {
         .login-btn {
           position: relative;
           border: 0.5px solid rgb(255 255 255 / 50%);
-          background-image: linear-gradient(135deg, var(--button-blue), #3d639d);
+          background-image: linear-gradient(135deg, #5f96d3, #3d639d);
           color: #fff;
           box-shadow: 0 4px 14px rgba(95, 150, 211, 0.35);
           transition: box-shadow 0.3s ease, background-image 0.3s ease;
           animation: heartbeat 1.6s ease-in-out infinite, loginBtnEntrance 0.6s ease both;
         }
         .login-btn:hover:not(:disabled) {
-          background-image: linear-gradient(135deg, var(--button-blue-hover), var(--button-blue));
+          background-image: linear-gradient(135deg, #84b2e2, #4a7abb);
           box-shadow: 0 8px 22px rgba(95, 150, 211, 0.45);
         }
         .login-btn:active:not(:disabled) { transform: scale(0.98); }

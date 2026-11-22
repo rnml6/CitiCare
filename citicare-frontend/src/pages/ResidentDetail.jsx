@@ -1628,7 +1628,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
               }`}
             >
               {c.name}
-              <span className='text-[10px] opacity-70'>
+              <span className='text-[11px] text-white/95'>
                 ({c.severity || 'Mild'})
               </span>
               <button
@@ -3576,7 +3576,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                       }`}
                     >
                       {n}
-                      <span className='text-[10px] opacity-70'>({s})</span>
+                      <span className='text-[11px] text-white/95'>({s})</span>
                       {editingConditions && (
                         <button
                           onClick={() =>
@@ -4883,7 +4883,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                               cols[s] || cols['Mild']
                             }`}
                           >
-                            {n} <span className='text-xs opacity-70'>({s})</span>
+                            {n} <span className='text-xs text-white/95'>({s})</span>
                           </span>
                         )
                       })
@@ -5105,7 +5105,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                               cols[s] || cols['Mild']
                             }`}
                           >
-                            {n} <span className='text-xs opacity-70'>({s})</span>
+                            {n} <span className='text-xs text-white/95'>({s})</span>
                           </span>
                         )
                       })
@@ -5340,7 +5340,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                               cols[s] || cols['Mild']
                             }`}
                           >
-                            {n} <span className='text-xs opacity-70'>({s})</span>
+                            {n} <span className='text-xs text-white/95'>({s})</span>
                           </span>
                         )
                       })
@@ -5585,7 +5585,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                               cols[s] || cols['Mild']
                             }`}
                           >
-                            {n} <span className='text-xs opacity-70'>({s})</span>
+                            {n} <span className='text-xs text-white/95'>({s})</span>
                           </span>
                         )
                       })
@@ -5753,7 +5753,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                               cols[s] || cols['Mild']
                             }`}
                           >
-                            {n} <span className='text-xs opacity-70'>({s})</span>
+                            {n} <span className='text-xs text-white/95'>({s})</span>
                           </span>
                         )
                       })
@@ -6062,7 +6062,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                             cols[s] || cols['Mild']
                           }`}
                         >
-                          {n} <span className='text-xs opacity-70'>({s})</span>
+                          {n} <span className='text-xs text-white/95'>({s})</span>
                         </span>
                       )
                     })
@@ -7023,7 +7023,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                             className='px-3 py-1.5 border rounded-full text-sm font-medium flex items-center gap-1 bg-emerald-500/30 text-emerald-200 border-emerald-400/40'
                           >
                             {growthVaxDisplay(v)}
-                            <span className='text-[10px] opacity-70'>
+                            <span className='text-[11px] text-white/95'>
                               {(() => {
                                 const s = medicineSchedules.find(m => String(m.id) === String(typeof v === 'string' ? v : v?.name))
                                   || medicineSchedules.find(m => String(m.medicine_name || '').trim().toLowerCase() === String(growthVaxDisplay(v) || '').trim().toLowerCase())

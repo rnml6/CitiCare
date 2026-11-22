@@ -4,11 +4,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --button-blue: #466da6;
-    --button-blue-hover: #4d76b0;
-  }
-
   * {
     font-family: 'Sora', sans-serif;
   }
@@ -179,35 +174,35 @@
   }
 
   .glass-btn-primary {
-    @apply glass-btn text-white bg-gradient-to-b from-[var(--button-blue)] to-primary-700 shadow-lg shadow-primary-500/25;
+    @apply glass-btn text-white bg-gradient-to-b from-primary-400 via-primary-500/90 to-primary-600/90 shadow-lg shadow-primary-500/25;
   }
   .glass-btn-primary:hover {
-    @apply from-[var(--button-blue-hover)] to-[var(--button-blue)];
+    @apply from-primary-400 via-primary-500 to-primary-600;
   }
 
   .glass-btn-solid-primary {
-    @apply glass-btn text-white bg-[var(--button-blue)] hover:bg-[var(--button-blue-hover)] active:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400/50;
+    @apply glass-btn text-white bg-primary-600 hover:bg-primary-500 active:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50;
   }
   .glass-btn-solid-secondary {
-    @apply glass-btn text-white bg-slate-600 hover:bg-slate-500 active:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50;
+    @apply glass-btn text-white bg-gray-700 hover:bg-gray-600 active:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50;
   }
   .glass-btn-solid-danger {
-    @apply glass-btn text-white bg-red-600 hover:bg-[#e02d35] active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400/50;
+    @apply glass-btn text-white bg-red-700 hover:bg-red-600 active:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50;
   }
   .glass-btn-solid-success {
-    @apply glass-btn text-white bg-emerald-700 hover:bg-[#07845e] active:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400/50;
+    @apply glass-btn text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50;
   }
 
   .glass-btn-secondary {
-    @apply glass-btn bg-blue-400/15 hover:bg-blue-400/20 text-white;
+    @apply glass-btn bg-gray-800/10 hover:bg-gray-700/15 text-white;
   }
 
   .glass-btn-danger {
-    @apply glass-btn text-white bg-gradient-to-b from-red-600 to-red-700 shadow-lg shadow-red-500/25;
+    @apply glass-btn text-white bg-gradient-to-b from-red-400 via-red-500/90 to-red-600/90 shadow-lg shadow-red-500/25;
   }
 
   .glass-btn-success {
-    @apply glass-btn text-white bg-gradient-to-b from-[#07845e] to-emerald-700 shadow-lg shadow-emerald-500/25;
+    @apply glass-btn text-white bg-gradient-to-b from-emerald-400 via-emerald-500/90 to-emerald-600/90 shadow-lg shadow-emerald-500/25;
   }
 
   /* ---- Stat cards ---- */
@@ -302,11 +297,23 @@
 /* Keep secondary text legible on translucent surfaces across screens. */
 :is(.text-white\/30, .text-white\/40, .text-white\/45, .text-white\/50,
     .text-white\/55, .text-white\/60, .text-white\/65, .text-white\/70):where(:not(svg)) {
-  color: rgb(255 255 255 / 85%);
+  color: rgb(255 255 255 / 95%);
 }
 
 .text-blue-200\/70 {
   color: #d0e2f4;
+}
+
+:is(.text-white\/75, .text-white\/80):where(:not(svg)) {
+  color: rgb(255 255 255 / 90%);
+}
+
+.text-blue-400:where(:not(svg)) {
+  @apply text-blue-300;
+}
+
+.text-red-400:where(:not(svg)) {
+  @apply text-red-300;
 }
 
 /* Chart legend & axis text must stay readable on dark backgrounds */
