@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { dialog } from '../context/DialogContext'
 import { Pill } from 'lucide-react'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo-96.png'
 
 const adminNav = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },

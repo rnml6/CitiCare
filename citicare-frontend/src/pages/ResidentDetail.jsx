@@ -31,6 +31,8 @@ import { useAuth } from '../context/AuthContext'
 import { dialog } from '../context/DialogContext'
 import { confirmCreate, confirmMutation, confirmUpdate } from '../utils/crudConfirm'
 import {
+  GENDER_OPTIONS,
+  GENDERS,
   sanitizeDecimalInput,
   sanitizeIntegerInput,
   sanitizeBloodPressureInput,
@@ -79,6 +81,9 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   // Profile form (admin keeps the editable select).
   const { isBHWWorker } = useAuth()
   const [resident, setResident] = useState(null)
+  const residentRequest = useRef(0)
+  const medicineRequest = useRef(0)
+  const encounterProfile = useRef(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [showMedicalModal, setShowMedicalModal] = useState(false)
@@ -322,71 +327,65 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   const [administeredByFilter, setAdministeredByFilter] = useState('')
 
   const fetchAllData = useCallback(async (background = false) => {
-    try {
-      if (!background) setLoading(true)
-      setLoadError(null)
-      // Settled (not all-or-nothing): a failing auxiliary call (e.g.
-      // medicines for a resident outside the BHW's purok) must never blank
-      // the whole detail page.
-      const [residentResult, medicineResult, bhwResult] =
-        await Promise.allSettled([
-          residentApi.getById(id),
-          medicineApi.getResidentMedicines(id),
-          bhwApi.getAll()
-        ])
-      const residentResponse = residentResult.status === 'fulfilled' ? residentResult.value : null
-      const medicineResponse = medicineResult.status === 'fulfilled' ? medicineResult.value : null
-      const bhwResponse = bhwResult.status === 'fulfilled' ? bhwResult.value : null
-      if (residentResult.status === 'rejected') {
-        console.error('Error fetching resident:', residentResult.reason)
-        // Surface the real server reason (e.g. scope 403 vs missing 404)
-        // instead of a generic "not found".
-        setLoadError(residentResult.reason?.response?.data?.message || null)
-        if ([403, 404].includes(residentResult.reason?.response?.status)) setResident(null)
-      }
-      if (medicineResult.status === 'rejected') console.error('Error fetching medicines:', medicineResult.reason)
-      if (bhwResult.status === 'rejected') console.error('Error fetching BHWs:', bhwResult.reason)
+    const request = ++residentRequest.current
+    const medicineLoad = ++medicineRequest.current
+    if (!background) setLoading(true)
+    setLoadError(null)
 
-      if (residentResponse?.data?.success) {
-        setResident(residentResponse.data.data)
+    const residentTask = residentApi.getById(id).then(response => {
+      if (request === residentRequest.current && response.data?.success) {
+        setResident(response.data.data)
       }
+    }).catch(error => {
+      if (request !== residentRequest.current) return
+      console.error('Error fetching resident:', error)
+      setLoadError(error.response?.data?.message || null)
+      if ([403, 404].includes(error.response?.status)) setResident(null)
+    }).finally(() => {
+      if (!background && request === residentRequest.current) setLoading(false)
+    })
 
-      if (medicineResponse?.data?.success) {
-        setMedicineStatus({
-          vaccines: medicineResponse.data.data.vaccines || [],
-          deworming: medicineResponse.data.data.deworming || [],
-          vitamins: medicineResponse.data.data.vitamins || []
-        })
-        setMedicineSchedules([
-          ...(medicineResponse.data.data.vaccines || []),
-          ...(medicineResponse.data.data.deworming || []),
-          ...(medicineResponse.data.data.vitamins || [])
-        ])
-      }
+    const medicineTask = medicineApi.getResidentMedicines(id).then(response => {
+      if (medicineLoad !== medicineRequest.current || !response.data?.success) return
+      const { vaccines = [], deworming = [], vitamins = [] } = response.data.data
+      setMedicineStatus({ vaccines: vaccines || [], deworming: deworming || [], vitamins: vitamins || [] })
+      setMedicineSchedules([...(vaccines || []), ...(deworming || []), ...(vitamins || [])])
+    }).catch(error => console.error('Error fetching medicines:', error))
 
-      if (bhwResponse?.data?.success) setBhws(bhwResponse.data.data)
-    } catch (e) {
-      console.error('Error fetching data:', e)
-    } finally {
-      if (!background) setLoading(false)
-    }
+    const bhwTask = bhwApi.getAll().then(response => {
+      if (response.data?.success) setBhws(response.data.data)
+    }).catch(error => console.error('Error fetching BHWs:', error))
+
+    await Promise.all([residentTask, medicineTask, bhwTask])
   }, [id])
 
+  const saveResident = async changes => {
+    const response = await residentApi.update(id, changes)
+    if (!response.data?.success || !response.data.data) {
+      throw new Error('Resident update was not confirmed')
+    }
+    ++residentRequest.current
+    setResident(current => String(current?.id) === String(id) ? response.data.data : current)
+  }
+
   const refreshResident = useCallback(async () => {
+    const request = ++residentRequest.current
     try {
       const res = await residentApi.getById(id)
-      if (res.data.success) setResident(res.data.data)
+      if (request === residentRequest.current && res.data.success) setResident(res.data.data)
     } catch (e) {
       console.error('Error refreshing resident:', e)
     }
   }, [id])
 
   const fetchMedicinesOnly = useCallback(async () => {
+    const medicineLoad = ++medicineRequest.current
     try {
       const [medicineResponse, masterResponse] = await Promise.allSettled([
         medicineApi.getResidentMedicines(id),
         medicineApi.getAll(),
       ])
+      if (medicineLoad !== medicineRequest.current) return
       if (medicineResponse.status === 'fulfilled' && medicineResponse.value?.data?.success) {
         setMedicineStatus({
           vaccines: medicineResponse.value.data.data.vaccines || [],
@@ -577,9 +576,8 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           bmi: editVitalSigns.bmi || null
         }
       }
-      await residentApi.update(id, dataToSend)
+      await saveResident(dataToSend)
       setShowEditModal(false)
-      refreshResident()
       dialog.toast('Resident updated successfully.', 'success')
     } catch (error) {
       const backendErrors = error.response?.data?.errors
@@ -1297,6 +1295,8 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
               Baby&apos;s Gender
             </label>
             <GlassSelect
+              name='babyGender'
+              error={medicalErrors.babyGender}
               value={medicalForm.babyGender}
               allowCustom={false}
               allowClear
@@ -1306,10 +1306,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                   target: { name: 'babyGender', value: v || '' },
                 })
               }
-              options={[
-                { value: 'Male', label: 'Male' },
-                { value: 'Female', label: 'Female' },
-              ]}
+              options={GENDER_OPTIONS}
             />
           </div>
           <GlassInput
@@ -2166,6 +2163,12 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
         let notesExtra = []
         let vitalsToSend = null
         let conditionsToSend = f.newConditions
+        const maternalVitals = {
+          ...f.vitalSigns,
+          weight: f.motherWeight || f.vitalSigns.weight,
+          bloodPressure: f.motherBP || f.vitalSigns.bloodPressure,
+          temperature: f.motherTemp || f.vitalSigns.temperature,
+        }
         if (f.type === 'Checkup') {
           diagnosis = f.assessment.trim()
           treatment = [f.reason.trim(), f.symptoms.trim()].filter(Boolean).join(' | ')
@@ -2219,12 +2222,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           ].filter(Boolean)
           // Dedicated prenatal vitals flow into structured vitals storage
           // (the generic vitals section is hidden for this type).
-          vitalsToSend = {
-            ...f.vitalSigns,
-            weight: f.motherWeight || f.vitalSigns.weight || '',
-            bloodPressure: f.motherBP || f.vitalSigns.bloodPressure || '',
-            temperature: f.motherTemp || f.vitalSigns.temperature || '',
-          }
+          vitalsToSend = maternalVitals
         } else if (f.type === 'Postpartum Checkup') {
           // Postpartum visits mirror the postpartum report columns.
           // Pregnancy status is always Delivered for this type (no input).
@@ -2237,7 +2235,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
             line('Assessment / Findings', f.assessment),
             line('Remarks', f.notes),
           ].filter(Boolean)
-          vitalsToSend = { ...f.vitalSigns }
+          vitalsToSend = maternalVitals
         } else if (f.type === 'Growth Monitoring') {
           diagnosis = f.assessment.trim()
           treatment = f.nutritionConcerns.trim()
@@ -2296,7 +2294,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
                 line('Maternal / Newborn assessment', f.assessment),
                 line('Remarks', f.notes),
               ].filter(Boolean)
-              vitalsToSend = { ...f.vitalSigns }
+              vitalsToSend = maternalVitals
             } else {
             diagnosis = f.assessment.trim()
             treatment = f.symptoms.trim()
@@ -2321,7 +2319,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
               line('Maternal assessment / Findings', f.assessment),
               line('Remarks', f.notes),
             ].filter(Boolean)
-            vitalsToSend = { ...f.vitalSigns }
+            vitalsToSend = maternalVitals
             }
           } else if (isInfantConcern(f.referralCategory)) {
             diagnosis = ''
@@ -2402,6 +2400,16 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           `Please confirm that you want to add a ${f.type || 'Checkup'} record for ${resident?.name || 'this resident'}.`
         )
         if (!confirmed) return
+        const profile = {
+          chronicConditions: conditionsToSend,
+          currentMedications: f.newMedications,
+          allergies: f.newAllergies
+        }
+        const profileChanges = Object.fromEntries(
+          Object.entries(profile).filter(([key, value]) =>
+            JSON.stringify(value) !== JSON.stringify(encounterProfile.current?.[key])
+          )
+        )
         const res = await residentApi.addMedicalHistory(id, {
           date: recordDate,
           type: f.type || 'Checkup',
@@ -2440,10 +2448,39 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
             ? postpartumPayloadOf()
             : undefined,
           administered_by: f.administered_by,
-          chronicConditions: conditionsToSend,
-          currentMedications: f.newMedications,
-          allergies: f.newAllergies
+          ...profile
         })
+        const savedRecord = res.data?.data
+        if (!res.data?.success || !savedRecord?.id) {
+          throw new Error('Medical record save was not confirmed')
+        }
+        ++residentRequest.current
+        setResident(current => String(current?.id) === String(id) ? {
+          ...current,
+          medicalHistory: [
+            savedRecord,
+            ...(current.medicalHistory || []).filter(record => record.id !== savedRecord.id)
+          ]
+        } : current)
+        if (Object.keys(profileChanges).length > 0) {
+          try {
+            const updated = await residentApi.update(id, profileChanges)
+            const updatedResident = updated.data?.data
+            if (!updated.data?.success || !updatedResident) {
+              throw new Error('Profile update was not confirmed')
+            }
+            setResident(current => String(current?.id) === String(id) ? {
+              ...current,
+              chronicConditions: updatedResident.chronicConditions,
+              currentMedications: updatedResident.currentMedications,
+              allergies: updatedResident.allergies
+            } : current)
+          } catch (error) {
+            console.error('Failed to update current medical profile:', error)
+            partialSave = true
+            dialog.error('The encounter was saved. Use Edit in Current Medical Profile to save the conditions, medications, or allergies you changed.', 'Profile update failed')
+          }
+        }
         if (res.data?.success && res.data?.vitalsOk === false) {
           partialSave = true
           dialog.error('Medical record saved, but vital signs failed to save.' + (res.data?.vitalsError ? `\nReason: ${res.data.vitalsError}` : '\nPlease try editing the record.'), 'Partial save')
@@ -2531,8 +2568,8 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           }
         }
       }
-      setShowMedicalModal(false)
       await refreshResident()
+      setShowMedicalModal(false)
       // Complete-flow: mark the linked individual schedule as Completed,
       // but only after the medical record was saved successfully. The
       // record's location is written back too, so Schedule Details and the
@@ -2634,7 +2671,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
         birthAttendantName: pp('birthAttendantName'),
         deliveryMode: pp('deliveryMode'),
         babyName: pp('babyName'),
-        babyGender: pp('babyGender'),
+        babyGender: GENDERS.includes(pp('babyGender')) ? pp('babyGender') : '',
         babyWeight: pp('babyWeight'),
         maternalDeathApplicable: maternalDeathDate !== '',
         maternalDeathDate,
@@ -2700,6 +2737,12 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
             frequency: m.frequency || ''
           }
     )
+    const allergies = {
+      drugs: [...(resident?.allergies?.drugs || [])],
+      food: [...(resident?.allergies?.food || [])],
+      environmental: [...(resident?.allergies?.environmental || [])]
+    }
+    encounterProfile.current = { chronicConditions: pc, currentMedications: pm, allergies }
     setMedicalForm({
       ...getInitialMedicalForm(),
       ...prenatalPrefill,
@@ -2707,11 +2750,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
       administered_by: '',
       newConditions: pc,
       newMedications: pm,
-      newAllergies: {
-        drugs: [...(resident?.allergies?.drugs || [])],
-        food: [...(resident?.allergies?.food || [])],
-        environmental: [...(resident?.allergies?.environmental || [])]
-      },
+      newAllergies: allergies,
       ...overrides
     })
     setTempCondition({ name: '', severity: 'Mild' })
@@ -2772,7 +2811,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
     if (!confirmed) return
     setSavingConditions(true)
     try {
-      await residentApi.update(id, {
+      await saveResident({
         chronicConditions: [
           ...(resident.chronicConditions || []),
           { name: newCondition.trim(), severity: newConditionSeverity }
@@ -2780,7 +2819,6 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
       })
       setNewCondition('')
       setNewConditionSeverity('Mild')
-      await refreshResident()
     } catch (e) {
       dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
     } finally {
@@ -2790,12 +2828,11 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   const removeCondition = async i => {
     openConfirm('Remove this condition?', async () => {
       try {
-          await residentApi.update(id, {
+          await saveResident({
             chronicConditions: resident.chronicConditions.filter(
               (_, idx) => idx !== i
             )
           })
-          await refreshResident()
       } catch (e) {
         dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
       }
@@ -2810,7 +2847,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
     if (!confirmed) return
     setSavingMedications(true)
     try {
-      await residentApi.update(id, {
+      await saveResident({
         currentMedications: [
           ...(resident.currentMedications || []),
           {
@@ -2821,7 +2858,6 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
         ]
       })
       setNewMedication({ name: '', dosage: '', frequency: '' })
-      await refreshResident()
     } catch (e) {
       dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
     } finally {
@@ -2831,12 +2867,11 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   const removeMedication = async i => {
     openConfirm('Remove this medication?', async () => {
       try {
-          await residentApi.update(id, {
+          await saveResident({
             currentMedications: resident.currentMedications.filter(
               (_, idx) => idx !== i
             )
           })
-          await refreshResident()
       } catch (e) {
         dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
       }
@@ -2860,9 +2895,8 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
         ...ua[allergyForm.type],
         allergyForm.allergen.trim()
       ]
-      await residentApi.update(id, { allergies: ua })
+      await saveResident({ allergies: ua })
       setAllergyForm({ type: 'drugs', allergen: '' })
-      await refreshResident()
     } catch (e) {
       dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
     } finally {
@@ -2878,8 +2912,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           environmental: [...(resident.allergies?.environmental || [])]
         }
         ua[t] = ua[t].filter((_, idx) => idx !== i)
-        await residentApi.update(id, { allergies: ua })
-        await refreshResident()
+        await saveResident({ allergies: ua })
       } catch (e) {
         dialog.error(e.response?.data?.message || 'Failed to save your changes.', 'Unable to save')
       }
@@ -3125,18 +3158,16 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
   const showGrowthPanel = residentAgeNum < 5 || profileGroups.includes('infant')
   const showPregnancyPanel = profileGroups.includes('pregnant')
   const showSeniorPanel = residentAgeNum >= 60 || profileGroups.includes('senior')
-  // Latest by encounter date (not creation order), so backdated entries
-  // never outrank a newer visit.
-  const latestRecordOf = type => {
-    const timeOf = d => {
-      const x = new Date(d)
-      return isNaN(x) ? 0 : x.getTime()
-    }
-    return (
-      [...(resident?.medicalHistory || [])]
-        .filter(r => r.type === type)
-        .sort((a, b) => timeOf(b.date) - timeOf(a.date))[0] || null
-    )
+  const timeOf = value => Date.parse(value) || 0
+  const historyByVisit = [...(resident.medicalHistory || [])].sort(
+    (a, b) => timeOf(b.date) - timeOf(a.date) || timeOf(b.createdAt) - timeOf(a.createdAt)
+  )
+  const latestRecordOf = type => historyByVisit.find(record => record.type === type)
+  const hasVital = value => value != null && String(value).trim() !== ''
+  const latestVitals = {}
+  for (const key of ['bloodPressure', 'heartRate', 'bloodSugar', 'bmi', 'temperature', 'weight', 'height']) {
+    const latestVisit = historyByVisit.find(record => hasVital(record.vitalSigns?.[key]))
+    latestVitals[key] = latestVisit?.vitalSigns[key] ?? resident.vitalSigns?.[key]
   }
   const latestGrowth = showGrowthPanel ? latestRecordOf('Growth Monitoring') : null
   const latestPrenatal = showPregnancyPanel ? latestRecordOf('Prenatal Checkup') : null
@@ -3373,18 +3404,17 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
           <h3 className='text-sm font-semibold text-blue-300 mb-3 uppercase tracking-wider'>
             Latest Vital Signs
           </h3>
-          {resident.vitalSigns &&
-          Object.values(resident.vitalSigns).some(v => v) ? (
+          {Object.values(latestVitals).some(hasVital) ? (
             (() => {
-              const vs = resident.vitalSigns
+              const vs = latestVitals
               const items = [
-                vs.bloodPressure && { label: 'Blood Pressure', value: vs.bloodPressure },
-                vs.heartRate && { label: 'Heart Rate', value: `${vs.heartRate} bpm` },
-                vs.bloodSugar && { label: 'Blood Sugar', value: `${vs.bloodSugar} mg/dL` },
-                vs.bmi && { label: 'BMI', value: vs.bmi },
-                vs.temperature && { label: 'Temperature', value: `${vs.temperature}°C` },
-                vs.weight && { label: 'Weight', value: `${vs.weight} kg` },
-                vs.height && { label: 'Height', value: `${vs.height} cm` },
+                hasVital(vs.bloodPressure) && { label: 'Blood Pressure', value: vs.bloodPressure },
+                hasVital(vs.heartRate) && { label: 'Heart Rate', value: `${vs.heartRate} bpm` },
+                hasVital(vs.bloodSugar) && { label: 'Blood Sugar', value: `${vs.bloodSugar} mg/dL` },
+                hasVital(vs.bmi) && { label: 'BMI', value: vs.bmi },
+                hasVital(vs.temperature) && { label: 'Temperature', value: `${vs.temperature}°C` },
+                hasVital(vs.weight) && { label: 'Weight', value: `${vs.weight} kg` },
+                hasVital(vs.height) && { label: 'Height', value: `${vs.height} cm` },
               ].filter(Boolean)
               const hasAnthropometric = ['Height', 'Weight', 'BMI'].every(label =>
                 items.some(item => item.label === label)
@@ -7353,7 +7383,7 @@ const ResidentDetail = ({ residentId, onClose, embedded = false, onDeleted, comp
             <div className='space-y-1.5'><label className='block text-sm text-blue-200'>Age</label><input type='text' value={editAgeDisplay} readOnly className='glass-input text-white/75 cursor-not-allowed' /></div>
           </div>
           <div className='grid grid-cols-2 gap-3'>
-            <GlassSelect label='Gender *' name='gender' error={editErrors.gender} value={editForm.gender} onChange={v => { setEditForm(p => ({ ...p, gender: v })); clearEditError('gender') }} required allowCustom placeholder='Select gender' options={[{ value: 'Female', label: 'Female' }, { value: 'Male', label: 'Male' }, { value: 'Other', label: 'Other' }]} />
+            <GlassSelect label='Gender *' name='gender' error={editErrors.gender} value={editForm.gender} onChange={v => { setEditForm(p => ({ ...p, gender: v })); clearEditError('gender') }} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
             <GlassSelect label='Civil Status' value={editForm.civilStatus} onChange={v => setEditForm(p => ({ ...p, civilStatus: v }))} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' name='contactNumber' error={editErrors.contactNumber} type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={editForm.contactNumber} onChange={e => { setEditForm(p => ({ ...p, contactNumber: sanitizePhoneInput(e.target.value) })); clearEditError('contactNumber') }} placeholder='Enter contact number' />

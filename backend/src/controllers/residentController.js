@@ -65,6 +65,43 @@ const cleanNullableText = (v) => {
   return s === '' ? null : s;
 };
 
+const getMissedCheckupCount = async (residentId) => {
+  const { data: lastCompleted } = await supabase
+    .from('schedules')
+    .select('date')
+    .eq('resident_id', residentId)
+    .eq('status', 'Completed')
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let query = supabase.from('schedules')
+    .select('*', { count: 'exact', head: true })
+    .eq('resident_id', residentId)
+    .eq('status', 'Missed');
+  if (lastCompleted?.date) query = query.gt('date', lastCompleted.date);
+  const { count } = await query;
+  return count || 0;
+};
+
+const getResidentMedicalHistory = async (residentId) => {
+  // Keep structured fields when present and support older schemas.
+  const { data: medicalHistory } = await supabase.from('medical_histories')
+    .select('*')
+    .eq('resident_id', residentId)
+    .order('created_at', { ascending: false });
+  const historyIds = medicalHistory?.map(h => h.history_id) || [];
+  const vitalsMap = {};
+  if (historyIds.length > 0) {
+    const { data, error } = await supabase.from('medical_history_vitals')
+      .select('*')
+      .in('history_id', historyIds);
+    if (error) console.error('Error fetching medical_history_vitals:', error);
+    data?.forEach(v => { vitalsMap[v.history_id] = v; });
+  }
+  return { medicalHistory, vitalsMap };
+};
+
 const getFullResidentData = async (residentId) => {
   // All of these reads are independent — fetch them in one wave instead of
   // eight sequential remote calls so create/update responses stay under the
@@ -76,7 +113,8 @@ const getFullResidentData = async (residentId) => {
     { data: conditions },
     { data: medications },
     { data: allergies },
-    { data: medicalHistory },
+    { medicalHistory, vitalsMap },
+    missedCheckups,
   ] = await Promise.all([
     supabase
       .from('residents')
@@ -87,62 +125,17 @@ const getFullResidentData = async (residentId) => {
     supabase.from('resident_chronic_conditions').select('condition_name').eq('resident_id', residentId),
     supabase.from('resident_medications').select('*').eq('resident_id', residentId),
     supabase.from('resident_allergies').select('allergy_type, allergen').eq('resident_id', residentId),
-    supabase
-      .from('medical_histories')
-      // Select * so structured prenatal columns are returned when the
-      // add_prenatal_fields_to_medical_histories.sql migration has run,
-      // while older databases simply return the legacy columns.
-      .select(`*`)
-      .eq('resident_id', residentId)
-      .order('created_at', { ascending: false }),
+    getResidentMedicalHistory(residentId),
+    getMissedCheckupCount(residentId),
   ]);
   if (residentError || !resident) return null;
-
-  const historyIds = medicalHistory?.map(h => h.history_id) || [];
-
-  // Second wave: history vitals plus the missed-checkup lookup (which only
-  // needs the most recent Completed visit).
-  const [{ data: historyVitals, error: vitalsError }, { data: lastCompleted }] = await Promise.all([
-    historyIds.length > 0
-      ? supabase
-        .from('medical_history_vitals')
-        .select('*')
-        .in('history_id', historyIds)
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from('schedules')
-      .select('date')
-      .eq('resident_id', residentId)
-      .eq('status', 'Completed')
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-
-  const vitalsMap = {};
-  if (vitalsError) {
-    console.error('Error fetching medical_history_vitals:', vitalsError);
-  }
-  if (historyVitals) {
-    historyVitals.forEach(v => { vitalsMap[v.history_id] = v; });
-  }
-
-  // Recalculate live for detail view (only 1 resident, acceptable cost)
-  // Reset rule: only missed dated AFTER the last Completed visit count.
-  let missedQuery = supabase
-    .from('schedules')
-    .select('*', { count: 'exact', head: true })
-    .eq('resident_id', residentId)
-    .eq('status', 'Missed');
-  if (lastCompleted?.date) missedQuery = missedQuery.gt('date', lastCompleted.date);
-  const { count: missedCheckups } = await missedQuery;
 
   const risk = calculateCompositeRiskScore({
     age: resident.age,
     dateOfBirth: resident.date_of_birth,
     conditions: conditions?.map(c => c.condition_name) || [],
     vitals,
-    missedCheckups: missedCheckups || 0,
+    missedCheckups,
   });
 
   return {

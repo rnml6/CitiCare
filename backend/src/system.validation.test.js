@@ -289,6 +289,8 @@ test('residents: create validation boundaries', async () => {
   expect400(await request('POST', '/api/residents', { token: adminToken, body: { ...base, dateOfBirth: '2999-01-01' } }), ['dateOfBirth'])
   expect400(await request('POST', '/api/residents', { token: adminToken, body: { ...base, dateOfBirth: '2026-02-30' } }), ['dateOfBirth'])
   expect400(await request('POST', '/api/residents', { token: adminToken, body: { ...base, gender: 'Robot' } }), ['gender'])
+  expect400(await request('POST', '/api/residents', { token: adminToken, body: { ...base, gender: 'Other' } }), ['gender'])
+  expect400(await request('PUT', '/api/residents/resident-1', { token: adminToken, body: { gender: 'Other' } }), ['gender'])
   expect400(await request('POST', '/api/residents', { token: adminToken, body: { ...base, civilStatus: 'Unknown' } }), ['civilStatus'])
 
   for (const age of [-1, 151, 1.5, 'abc']) {
@@ -418,6 +420,10 @@ test('medical history: vital-sign boundaries and unknown resident handling', asy
     }
   })
   expect400(invalidVitals, ['bloodPressure', 'heartRate', 'temperature', 'weight', 'height', 'bloodSugar', 'bmi'])
+  expect400(await request('POST', '/api/residents/resident-1/medical-history', {
+    token: adminToken,
+    body: { type: 'Postpartum Checkup', postpartum: { babyGender: 'Other' } }
+  }), ['babyGender'])
 
   expect400(
     await request('POST', '/api/residents/resident-1/medical-history', {
@@ -452,6 +458,26 @@ test('medical history: vital-sign boundaries and unknown resident handling', asy
   })
   expectStatus(valid, 201)
   assert.equal(valid.body?.vitalsOk, true)
+  const recordId = valid.body.data.id
+
+  const profile = await request('PUT', '/api/residents/resident-1', {
+    token: adminToken,
+    body: {
+      chronicConditions: [{ name: 'Asthma', severity: 'Mild' }],
+      currentMedications: [{ name: 'Test medication', dosage: '1 tablet', frequency: 'Daily' }],
+      allergies: { drugs: [], food: ['Peanuts'], environmental: [] }
+    }
+  })
+  expectStatus(profile, 200)
+  assert.equal(JSON.parse(profile.body.data.chronicConditions[0]).name, 'Asthma')
+  assert.equal(profile.body.data.currentMedications[0].name, 'Test medication')
+  assert.deepEqual(profile.body.data.allergies.food, ['Peanuts'])
+
+  const detail = await request('GET', '/api/residents/resident-1', { token: adminToken })
+  expectStatus(detail, 200)
+  assert.deepEqual(detail.body.data.allergies, profile.body.data.allergies)
+  const savedRecord = detail.body.data.medicalHistory.find(record => record.id === recordId)
+  assert.deepEqual(savedRecord?.vitalSigns, valid.body.data.vitalSigns)
 })
 
 // ---------------------------------------------------------------------------
@@ -956,6 +982,145 @@ test('dashboard: every route responds for an admin token', async () => {
   }
 })
 
+test('dashboard: AI reporting periods look back 1, 3, or 12 months from today in Manila', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2024-05-30T17:00:00Z') })
+  const planningActions = new Set()
+  const outreachActions = new Set()
+  const summaries = new Set()
+  const currentSummaries = new Set()
+  const healthPrograms = new Set()
+  const today = '2024-05-31'
+  fake.tables.get('residents').push({ resident_id: 'resident-2', purok_id: 'purok-1', risk_score: 0 })
+  fake.tables.get('residents').push({
+    resident_id: 'resident-with-older-encounter',
+    name: 'Resident with older encounter',
+    purok_id: 'purok-1',
+    risk_score: 85,
+  })
+  fake.tables.get('resident_chronic_conditions').push({
+    condition_id: 'older-condition',
+    resident_id: 'resident-with-older-encounter',
+    condition_name: 'Asthma'
+  })
+  fake.tables.set('medical_histories', [
+    { history_id: 1, resident_id: 'resident-1', date: today },
+    { history_id: 2, resident_id: 'resident-2', date: '2024-04-30' },
+    { history_id: 3, resident_id: 'resident-2', date: '2024-02-29' },
+    { history_id: 4, resident_id: 'resident-2', date: '2023-05-31' },
+    { history_id: 5, resident_id: 'resident-with-older-encounter', date: '2023-05-30' }
+  ])
+  fake.tables.set('schedules', [
+    { schedule_id: 1, resident_id: 'resident-1', status: 'Completed', date: today },
+    { schedule_id: 2, resident_id: 'resident-2', status: 'Missed', date: '2020-01-01' },
+    { schedule_id: 3, resident_id: 'resident-2', status: 'Completed', date: '2099-01-01' },
+    { schedule_id: 4, resident_id: 'resident-1', status: 'Missed', date: '2020-01-01' },
+    { schedule_id: 5, resident_id: 'resident-1', status: 'Cancelled', date: '2024-03-01' },
+    { schedule_id: 6, resident_id: 'resident-1', status: 'Completed', date: '2023-06-01' }
+  ])
+  for (const period of ['monthly', 'quarterly', 'annual', 'annually']) {
+    const response = await request('GET', `/api/dashboard/ai-recommendation?period=${period}`, { token: adminToken })
+    expectStatus(response, 200)
+    const { dateRange, period: reportedPeriod } = response.body.data
+    assert.equal(dateRange.endDate, today)
+    assert.equal(dateRange.startDate, {
+      monthly: '2024-04-30', quarterly: '2024-02-29', annual: '2023-05-31', annually: '2023-05-31'
+    }[period])
+    assert.equal(reportedPeriod, period === 'annually' ? 'annual' : period)
+    assert.ok(response.body.data.summary.startsWith(response.body.data.periodSummary))
+    assert.doesNotMatch(response.body.data.summary, /\b\d{4}-\d{2}-\d{2}\b/)
+    assert.match(response.body.data.currentSummary, /registered residents/)
+    currentSummaries.add(response.body.data.currentSummary)
+    assert.match(response.body.data.summary, /registered residents.*critical risk.*high risk/)
+    assert.match(response.body.data.summary, /Asthma is the most frequently recorded chronic condition/)
+    assert.match(response.body.data.summary, {
+      monthly: /last month recorded 2 medical encounters and 1 completed/,
+      quarterly: /last three months recorded 1 completed and 1 cancelled/,
+      annual: /last 12 months, 2 of 3 current residents had a recorded encounter/,
+    }[reportedPeriod])
+    if (reportedPeriod !== 'monthly') {
+      assert.match(response.body.data.summary, /Encounters: 2 in the past month.+1 in the two months before that/)
+    }
+    if (reportedPeriod === 'annual') assert.match(response.body.data.summary, /1 in the rest of the year/)
+    assert.match(response.body.data.summary, {
+      monthly: /The preceding month recorded 0 medical encounters/,
+      quarterly: /The preceding quarter recorded 0 completed/,
+      annual: /In the preceding year, 1 of the same 3 current residents had recorded contact/,
+    }[reportedPeriod])
+    summaries.add(response.body.data.summary)
+    assert.ok(response.body.data.keyFindings.some(finding => finding.includes(
+      `${{ monthly: 2, quarterly: 3, annual: 4 }[reportedPeriod]} medical encounters`
+    )))
+    const scheduledCount = { monthly: '1 scheduled activity', quarterly: '2 scheduled activities', annual: '3 scheduled activities' }[reportedPeriod]
+    assert.ok(response.body.data.keyFindings.some(finding => finding.includes(`and ${scheduledCount}.`)))
+    assert.ok(response.body.data.keyFindings.some(finding =>
+      finding.startsWith(`1 resident has an outstanding missed health consultation as of ${today}.`)))
+    const outreach = response.body.data.recommendations.find(item =>
+      item.targetGroup === '1 resident with outstanding missed health consultations')
+    assert.ok(outreach)
+    outreachActions.add(outreach.action)
+    const averageFinding = {
+      monthly: 'average per week was 0.4 medical encounters and 0.2 scheduled activities',
+      quarterly: 'average per month was 1 medical encounter and 0.7 scheduled activities',
+      annual: 'average per quarter was 1 medical encounter and 0.8 scheduled activities',
+    }[reportedPeriod]
+    assert.ok(response.body.data.keyFindings.some(finding => finding.includes(averageFinding)))
+    const olderResident = response.body.data.priorityResidents.recommendations.find(
+      resident => resident.residentId === 'resident-with-older-encounter'
+    )
+    assert.equal(olderResident?.riskLevel, 'Critical Risk')
+    assert.deepEqual(olderResident?.conditions, ['Asthma'])
+    assert.match(response.body.data.healthProgramRecommendation.programs[0].program,
+      { monthly: /^Monthly/, quarterly: /^Quarterly/, annual: /^Annual/ }[reportedPeriod])
+    healthPrograms.add(response.body.data.healthProgramRecommendation.programs[0].program)
+    const plan = response.body.data.recommendations.find(item => item.category === 'Planning')
+    assert.ok(plan, `expected a planning action for ${period}`)
+    assert.match(plan.timeline, { monthly: /weekly/, quarterly: /quarterly/, annual: /annual/ }[reportedPeriod])
+    assert.match(plan.action, {
+      monthly: /confirm upcoming appointments/,
+      quarterly: /increase in recorded cancellations/,
+      annual: /verify which residents have no contact recorded/,
+    }[reportedPeriod])
+    assert.match(plan.evidence, { monthly: /unresolved missed consultations/, quarterly: /cancelled/, annual: /12-month window/ }[reportedPeriod])
+    assert.ok(response.body.data.healthProgramRecommendation.programs[0].evidence)
+    planningActions.add(plan.action)
+  }
+  assert.equal(planningActions.size, 3)
+  assert.equal(outreachActions.size, 3)
+  assert.equal(summaries.size, 3)
+  assert.equal(currentSummaries.size, 1)
+  assert.equal(healthPrograms.size, 3)
+  fake.tables.get('medical_histories').push(...[6, 7, 8].map(history_id => ({
+    history_id, resident_id: 'resident-1', date: '2024-04-15'
+  })))
+  const decline = await request('GET', '/api/dashboard/ai-recommendation?period=monthly', { token: adminToken })
+  expectStatus(decline, 200)
+  assert.match(decline.body.data.recommendations.find(item => item.category === 'Planning').action,
+    /verify the drop in recorded activity/)
+  assert.match(decline.body.data.healthProgramRecommendation.programs[0].activities[0],
+    /Reconcile this month’s encounter and completion records/)
+  fake.tables.get('medical_histories').push({
+    history_id: 9, resident_id: 'resident-with-older-encounter', date: '2024-01-15'
+  })
+  const annualCoverage = await request('GET', '/api/dashboard/ai-recommendation?period=annual', { token: adminToken })
+  expectStatus(annualCoverage, 200)
+  assert.match(decline.body.data.periodResidentSummary, /^2 current residents.*0 are currently at critical risk/)
+  assert.match(annualCoverage.body.data.periodResidentSummary, /^3 current residents.*1 are currently at critical risk/)
+  assert.match(annualCoverage.body.data.periodResidentSummary, /Most common recorded chronic condition: Asthma/)
+  const monthlyPlan = decline.body.data.recommendations.find(item => item.category === 'Planning')
+  const annualPlan = annualCoverage.body.data.recommendations.find(item => item.category === 'Planning')
+  assert.equal(monthlyPlan.targetGroup, '2 residents reached in the selected period')
+  assert.equal(annualPlan.targetGroup, '3 residents reached in the selected period')
+  assert.match(annualPlan.evidence, /Asthma.*1 resident\)/)
+  assert.doesNotMatch(monthlyPlan.evidence, /Asthma/)
+  const [monthlyProgram] = decline.body.data.healthProgramRecommendation.programs
+  const [annualProgram] = annualCoverage.body.data.healthProgramRecommendation.programs
+  assert.equal(monthlyProgram.targetGroup, monthlyPlan.targetGroup)
+  assert.equal(annualProgram.targetGroup, annualPlan.targetGroup)
+  assert.match(annualProgram.evidence, /Asthma/)
+  assert.doesNotMatch(monthlyProgram.evidence, /Asthma/)
+  expectStatus(await request('GET', '/api/dashboard/ai-recommendation?period=weekly', { token: adminToken }), 400)
+})
+
 test('dashboard: analytics include the latest rows beyond the first database page', async () => {
   const residents = Array.from({ length: 1001 }, (_, index) => ({
     resident_id: index + 1,
@@ -993,6 +1158,7 @@ test('dashboard: analytics include the latest rows beyond the first database pag
 })
 
 test('dashboard: AI findings include missed care while risk lists include only high and critical risk', async () => {
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Manila' }).format(new Date())
   fake.tables.set('residents', Array.from({ length: 20 }, (_, index) => {
     const purok = index === 19 ? 2 : index === 8 ? 3 : index >= 1 && index < 6 ? 4 : 1
     return {
@@ -1007,12 +1173,12 @@ test('dashboard: AI findings include missed care while risk lists include only h
     schedule_id: index + 1,
     resident_id: (index % 19) + 1,
     status: 'Missed',
-    date: '2024-01-01'
+    date: today
   }))
   schedules.push(
-    { schedule_id: 23, resident_id: 20, status: 'Missed', date: '2024-01-01' },
-    { schedule_id: 24, resident_id: 20, status: 'Completed', date: '2024-01-02' },
-    { schedule_id: 25, resident_id: null, status: 'Missed', date: '2024-01-01' }
+    { schedule_id: 23, resident_id: 20, status: 'Missed', date: today },
+    { schedule_id: 24, resident_id: 20, status: 'Completed', date: today },
+    { schedule_id: 25, resident_id: null, status: 'Missed', date: today }
   )
   fake.tables.set('schedules', schedules)
   const analytics = await request('GET', '/api/dashboard/missed-consultations', { token: adminToken })
@@ -1024,8 +1190,8 @@ test('dashboard: AI findings include missed care while risk lists include only h
   const report = await request('GET', path, { token: adminToken })
   expectStatus(report, 200)
   assert.equal(recommendationData.residentsWithMissedConsultations, analytics.body.data.length)
-  assert.ok(report.body.data.keyFindings.some(finding => finding.startsWith('19 residents have outstanding missed health consultations.')))
-  assert.ok(report.body.data.keyFindings.every(finding => !finding.includes('22')))
+  assert.ok(report.body.data.keyFindings.some(finding => finding.startsWith(`19 residents have outstanding missed health consultations as of ${today}.`)))
+  assert.ok(report.body.data.keyFindings.every(finding => !/22 (consultations|missed|residents)/i.test(finding)))
   assert.ok(report.body.data.recommendations.some(r => r.targetGroup === '19 residents with outstanding missed health consultations'))
   const priorities = report.body.data.priorityResidents.recommendations
   assert.deepEqual(priorities.map(r => r.residentId), [1, 2, 3, 4, 5, 6, 20])
@@ -1042,6 +1208,7 @@ test('dashboard: AI findings include missed care while risk lists include only h
 })
 
 test('dashboard: worker AI recommendations follow the current analytics scopes', async () => {
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Manila' }).format(new Date())
   const worker = fake.tables.get('bhws')[0]
   worker.assigned_purok_id = 'purok-1'
   worker.assigned_focus_group = 'pregnant'
@@ -1053,6 +1220,9 @@ test('dashboard: worker AI recommendations follow the current analytics scopes',
     risk_score: index < 2 ? 80 : 0
   }))
   fake.tables.set('residents', residents)
+  fake.tables.set('medical_histories', residents.map(({ resident_id }) => ({
+    history_id: resident_id, resident_id, date: today
+  })))
   fake.tables.set('resident_chronic_conditions', residents.slice(0, 3).map(resident => ({
     condition_id: resident.resident_id,
     resident_id: resident.resident_id,
@@ -1061,7 +1231,7 @@ test('dashboard: worker AI recommendations follow the current analytics scopes',
   fake.tables.set('schedules', [1, 2, 3].map(residentId => ({
     schedule_id: residentId,
     resident_id: residentId,
-    date: '2024-01-01',
+    date: today,
     status: 'Missed'
   })))
   const path = '/api/dashboard/ai-recommendation'

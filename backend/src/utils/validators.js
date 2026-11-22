@@ -4,7 +4,7 @@
 // structured 400 response: { success: false, message, errors: { field: msg } }.
 // Keeping the rules here makes them directly unit-testable without a database.
 
-export const GENDERS = ['Male', 'Female', 'Other']
+export const GENDERS = ['Male', 'Female']
 export const CIVIL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated']
 export const FOCUS_GROUPS = ['pregnant', 'senior', 'infant', 'pwd', 'withCondition']
 export const SCHEDULE_SCOPES = ['individual', 'purok', 'barangay']
@@ -201,6 +201,9 @@ export const validateMedicalHistoryPayload = (body = {}) => {
   addTextError(errors, 'treatment', body.treatment, { max: 2000, label: 'Treatment' })
   addTextError(errors, 'notes', body.notes, { max: 5000, label: 'Notes' })
   addTextError(errors, 'administered_by', body.administered_by, { max: 120, label: 'Administered by' })
+
+  const postpartum = body.postpartum && typeof body.postpartum === 'object' ? body.postpartum : body
+  addOptionalEnumError(errors, 'babyGender', postpartum.babyGender ?? postpartum.baby_gender, GENDERS, "baby's gender")
 
   if (body.vitalSigns && typeof body.vitalSigns === 'object') {
     const vitals = body.vitalSigns

@@ -16,7 +16,7 @@ import GlassSelect from '../components/GlassSelect'
 import Modal from '../components/Modal'
 import StatCard from '../components/StatCard'
 import PriorityResidentsSidebar from '../components/PriorityResidentsSidebar'
-import ResidentDetail from './ResidentDetail'
+import ResidentDetail from '../components/LazyResidentDetail'
 import { SkeletonResidentsPage } from '../components/Skeleton'
 import Pagination from '../components/Pagination'
 import ConfirmModal from '../components/ConfirmModal'
@@ -25,6 +25,7 @@ import { confirmCreate, confirmUpdate } from '../utils/crudConfirm'
 import { focusFirstError } from '../utils/focusInvalidField'
 import { getRiskColor, getRiskScoreColor, formatDate, focusGroupLabel, focusGroupsMatch, formatAgeLong, sortResidentsAlphabetically } from '../utils/helpers'
 import {
+  GENDER_OPTIONS,
   validateResidentFields,
   hasErrors,
   sanitizePhoneInput,
@@ -522,7 +523,7 @@ const Residents = () => {
             <div className='space-y-1.5'><label className='block text-sm text-blue-200'>Age</label><input type='text' value={ageDisplay} readOnly className='glass-input text-white/75 cursor-not-allowed' /></div>
           </div>
           <div className='grid grid-cols-2 gap-3'>
-            <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom placeholder='Select gender' options={[{ value: 'Female', label: 'Female' }, { value: 'Male', label: 'Male' }, { value: 'Other', label: 'Other' }]} />
+            <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
             <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={formData.contactNumber} onChange={e => handleFormChange('contactNumber', e.target.value)} error={formErrors.contactNumber} placeholder='Enter contact number' />
@@ -581,7 +582,7 @@ const Residents = () => {
             <div className='space-y-1.5'><label className='block text-sm text-blue-200'>Age</label><input type='text' value={ageDisplay} readOnly className='glass-input text-white/75 cursor-not-allowed' /></div>
           </div>
           <div className='grid grid-cols-2 gap-3'>
-            <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom placeholder='Select gender' options={[{ value: 'Female', label: 'Female' }, { value: 'Male', label: 'Male' }, { value: 'Other', label: 'Other' }]} />
+            <GlassSelect label='Gender *' value={formData.gender} onChange={v => handleFormChange('gender', v)} error={formErrors.gender} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
             <GlassSelect label='Civil Status' value={formData.civilStatus} onChange={v => handleFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={formData.contactNumber} onChange={e => handleFormChange('contactNumber', e.target.value)} error={formErrors.contactNumber} placeholder='Enter contact number' />

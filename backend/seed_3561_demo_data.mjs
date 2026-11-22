@@ -134,11 +134,6 @@ const MALE_FIRST = [
   'Jerome', 'Kurt', 'Luis', 'Mark', 'Nathaniel', 'Oliver', 'Peter',
 ];
 
-const OTHER_FIRST = [
-  'Alex', 'Jordan', 'Riley', 'Casey', 'Jamie', 'Taylor', 'Morgan',
-  'Avery', 'Dakota', 'Skyler', 'Reese', 'Rowan',
-];
-
 const MIDDLE_NAMES = [
   'Santos', 'Reyes', 'Cruz', 'Bautista', 'Ocampo', 'Villanueva', 'Mendoza',
   'Navarro', 'Ramos', 'Dela Cruz', 'Garcia', 'Aquino', 'Torres', 'Flores',
@@ -699,12 +694,10 @@ const makePlan = (i) => {
   const rng = mulberry32(0x51ed270b + i * 2654435761);
   const bucket = BUCKET_LIST[i];
   const g = rng();
-  const gender = g < 0.505 ? 'Female' : g < 0.995 ? 'Male' : 'Other';
+  const gender = g < 0.505 ? 'Female' : 'Male';
   const first = gender === 'Female'
     ? pick(rng, FEMALE_FIRST)
-    : gender === 'Male'
-      ? pick(rng, MALE_FIRST)
-      : pick(rng, OTHER_FIRST);
+    : pick(rng, MALE_FIRST);
   const name = uniqueName(first, rng);
 
   let dob;

@@ -27,6 +27,7 @@ app.use(cors({
     .filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  maxAge: 600,
 }));
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 

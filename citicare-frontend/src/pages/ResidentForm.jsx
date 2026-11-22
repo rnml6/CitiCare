@@ -15,6 +15,7 @@ import { dialog } from '../context/DialogContext'
 import { confirmCreate, confirmUpdate } from '../utils/crudConfirm'
 import { focusFirstError } from '../utils/focusInvalidField'
 import {
+  GENDER_OPTIONS,
   validateResidentFields,
   validateVitalSigns,
   hasErrors,
@@ -519,12 +520,8 @@ const ResidentForm = () => {
                 onChange={v => handleChange({ target: { name: 'gender', value: v } })}
                 error={formErrors.gender}
                 placeholder='Select gender'
-                allowCustom
-                options={[
-                  { value: 'Female', label: 'Female' },
-                  { value: 'Male', label: 'Male' },
-                  { value: 'Other', label: 'Other' }
-                ]}
+                allowCustom={false}
+                options={GENDER_OPTIONS}
                 required
               />
             </div>
@@ -896,13 +893,9 @@ const ResidentForm = () => {
             value={formData.gender}
             onChange={(v) => setFormData(prev => ({ ...prev, gender: v }))}
             placeholder='Select gender'
-            allowCustom
+            allowCustom={false}
             required
-            options={[
-              { value: 'Female', label: 'Female' },
-              { value: 'Male', label: 'Male' },
-              { value: 'Other', label: 'Other' }
-            ]}
+            options={GENDER_OPTIONS}
           />
           <GlassSelect
             name='civilStatus'
@@ -1121,13 +1114,9 @@ const ResidentForm = () => {
             value={formData.gender}
             onChange={(v) => setFormData(prev => ({ ...prev, gender: v }))}
             placeholder='Select gender'
-            allowCustom
+            allowCustom={false}
             required
-            options={[
-              { value: 'Female', label: 'Female' },
-              { value: 'Male', label: 'Male' },
-              { value: 'Other', label: 'Other' }
-            ]}
+            options={GENDER_OPTIONS}
           />
           <GlassSelect
             name='civilStatus'

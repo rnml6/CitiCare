@@ -43,15 +43,8 @@ import {
   VULNERABLE_GROUP_META,
   filterVulnerableResidents,
 } from '../utils/vulnerableExport'
-import {
-  downloadGeneralXlsx,
-  downloadVulnerableXlsx,
-} from '../utils/healthReportExport'
-import { downloadInfantsXlsx } from '../utils/infantsReport'
-import { downloadSeniorsXlsx } from '../utils/seniorsReport'
-import {
-  downloadMaternalXlsx,
-} from '../utils/maternalReport'
+
+const reportDate = new Intl.DateTimeFormat('en-PH', { dateStyle: 'long', timeZone: 'UTC' })
 
 const MOBILE_SAMPLE_ACTIVITIES = [
   {
@@ -155,20 +148,18 @@ const Dashboard = () => {
   const missedPerPage = 5
   const [conditionsPage, setConditionsPage] = useState(1)
   const conditionsPerPage = 6
-  const [aiFindingsPage, setAiFindingsPage] = useState(1)
-  const [aiRisksPage, setAiRisksPage] = useState(1)
   const [aiActionsPage, setAiActionsPage] = useState(1)
-  const [aiPriorityPage, setAiPriorityPage] = useState(1)
-  const [aiPurokRankPage, setAiPurokRankPage] = useState(1)
   const [aiProgramsPage, setAiProgramsPage] = useState(1)
   const aiListPerPage = 3
   const [aiReport, setAiReport] = useState(null)
+  const aiRequest = useRef(0)
   const aiScope = isBHWWorker ? JSON.stringify([user?.bhw?.assignedPurokId, bhwFocusGroup]) : 'barangay'
-  const aiRecommendation = aiReport?.scope === aiScope ? aiReport.data : null
   const [loading, setLoading] = useState(true)
+  const [loadingDashboardSections, setLoadingDashboardSections] = useState(true)
   const [aiError, setAiError] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiPeriod, setAiPeriod] = useState('monthly')
+  const aiRecommendation = aiReport?.scope === aiScope && aiReport.data.period === aiPeriod ? aiReport.data : null
   const [selectedPurokForDiseases, setSelectedPurokForDiseases] =
     useState('all')
   const [exportLoading, setExportLoading] = useState(false)
@@ -202,7 +193,7 @@ const Dashboard = () => {
   useDataRefresh(() => Promise.all([
     fetchDashboardData(true),
     activityView === 'upcoming' && fetchUpcomingActivities(true)
-  ]), !loading && !upcomingLoading)
+  ]), !loadingDashboardSections && !upcomingLoading)
 
   useEffect(() => {
     const measure = () => {
@@ -232,50 +223,27 @@ const Dashboard = () => {
   }, [loading])
 
   const fetchDashboardData = async (background = false) => {
-    try {
-      if (!background) setLoading(true)
-      const [
-        statsRes,
-        riskRes,
-        purokRiskRes,
-        diseasesRes,
-        trendsRes,
-        activitiesRes,
-        missedRes
-      ] = (await Promise.allSettled([
-        dashboardApi.getStats(),
-        dashboardApi.getRiskDistribution(),
-        dashboardApi.getRiskDistributionByPurok(),
-        dashboardApi.getCommonDiseases(),
-        dashboardApi.getMonthlyTrends(),
-        dashboardApi.getTodayActivities(),
-        dashboardApi.getMissedConsultations()
-      ])).map(result => {
-        if (result.status === 'fulfilled') return result.value
-        console.error('Dashboard data refresh failed:', result.reason)
-        return null
-      })
-      if (statsRes?.data.success) setStats(statsRes.data.data)
-      if (riskRes?.data.success) {
-        const d = riskRes.data.data
-        setRiskDistribution([
-          { name: 'Critical', value: d.critical || 0, color: '#ef4444' },
-          { name: 'High', value: d.high || 0, color: '#f97316' },
-          { name: 'Moderate', value: d.moderate || 0, color: '#f59e0b' },
-          { name: 'Low', value: d.low || 0, color: '#10b981' }
-        ])
-      }
-      if (purokRiskRes?.data.success) setPurokRiskData(purokRiskRes.data.data)
-      if (diseasesRes?.data.success) setCommonDiseases(diseasesRes.data.data)
-      if (trendsRes?.data.success) setMonthlyTrends(trendsRes.data.data)
-      if (activitiesRes?.data.success)
-        setTodayActivities(activitiesRes.data.data)
-      if (missedRes?.data.success) setMissedConsultations(missedRes.data.data || [])
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      if (!background) setLoading(false)
-    }
+    const load = (request, apply) => request.then(response => {
+      if (response?.data?.success) apply(response.data.data)
+    }).catch(error => console.error('Dashboard data refresh failed:', error))
+
+    await Promise.all([
+      load(dashboardApi.getStats(), setStats).finally(() => {
+        if (!background) setLoading(false)
+      }),
+      load(dashboardApi.getRiskDistribution(), d => setRiskDistribution([
+        { name: 'Critical', value: d.critical || 0, color: '#ef4444' },
+        { name: 'High', value: d.high || 0, color: '#f97316' },
+        { name: 'Moderate', value: d.moderate || 0, color: '#f59e0b' },
+        { name: 'Low', value: d.low || 0, color: '#10b981' }
+      ])),
+      load(dashboardApi.getRiskDistributionByPurok(), setPurokRiskData),
+      load(dashboardApi.getCommonDiseases(), setCommonDiseases),
+      load(dashboardApi.getMonthlyTrends(), setMonthlyTrends),
+      load(dashboardApi.getTodayActivities(), setTodayActivities),
+      load(dashboardApi.getMissedConsultations(), data => setMissedConsultations(data || []))
+    ])
+    if (!background) setLoadingDashboardSections(false)
   }
 
   const fetchUpcomingActivities = async (background = false) => {
@@ -299,11 +267,7 @@ const Dashboard = () => {
   }
 
   useEffect(() => {
-    setAiFindingsPage(1)
-    setAiRisksPage(1)
     setAiActionsPage(1)
-    setAiPriorityPage(1)
-    setAiPurokRankPage(1)
     setAiProgramsPage(1)
   }, [aiRecommendation])
 
@@ -390,20 +354,26 @@ const Dashboard = () => {
   }
 
   const fetchAIRecommendation = async period => {
+    const request = ++aiRequest.current
+    setAiPeriod(period)
     try {
       setAiLoading(true)
       setAiError('')
       setAiReport(null)
       const response = await dashboardApi.getAIRecommendation(period)
-      if (response.data.success) setAiReport({ scope: aiScope, data: response.data.data })
+      if (request !== aiRequest.current) return
+      if (response.data.success && response.data.data?.period === period) {
+        setAiReport({ scope: aiScope, data: response.data.data })
+      }
       else setAiError('Could not generate recommendations. Select a period to retry.')
     } catch (error) {
+      if (request !== aiRequest.current) return
       setAiError(error.response?.data?.code === 'BHW_ASSIGNMENT_REQUIRED'
         ? error.response.data.message
         : 'Could not generate recommendations. Select a period to retry.')
       console.error('AI Error:', error)
     } finally {
-      setAiLoading(false)
+      if (request === aiRequest.current) setAiLoading(false)
     }
   }
 
@@ -420,6 +390,7 @@ const Dashboard = () => {
         dialog.info('No residents with chronic conditions found for the general health report.', 'Nothing to export')
         return
       }
+      const { downloadGeneralXlsx } = await import('../utils/healthReportExport')
       downloadGeneralXlsx({
         residents,
         exportedBy: user?.bhw?.name || user?.name || '',
@@ -452,6 +423,7 @@ const Dashboard = () => {
           dialog.info('No infants found for the vaccination report.', 'Nothing to export')
           return
         }
+        const { downloadInfantsXlsx } = await import('../utils/infantsReport')
         downloadInfantsXlsx(infants, { exportedBy: user?.bhw?.name || user?.name || '' })
         setShowExportModal(false)
         dialog.toast('Infant vaccination report downloaded.', 'success')
@@ -468,6 +440,7 @@ const Dashboard = () => {
           dialog.info('No senior citizens found for the report.', 'Nothing to export')
           return
         }
+        const { downloadSeniorsXlsx } = await import('../utils/seniorsReport')
         downloadSeniorsXlsx(seniors, { exportedBy: user?.bhw?.name || user?.name || '' })
         setShowExportModal(false)
         dialog.toast('Senior citizen report downloaded.', 'success')
@@ -520,6 +493,7 @@ const Dashboard = () => {
         }
         if (vulnerableGroup === 'all' && !summary.totalVulnerable) summary.totalVulnerable = residents.length
       }
+      const { downloadVulnerableXlsx } = await import('../utils/healthReportExport')
       downloadVulnerableXlsx({
         group: vulnerableGroup,
         residents,
@@ -562,6 +536,7 @@ const Dashboard = () => {
         dialog.info('No pregnancies or delivered mothers found for the maternal report.', 'Nothing to export')
         return
       }
+      const { downloadMaternalXlsx } = await import('../utils/maternalReport')
       downloadMaternalXlsx(prenatal, postpartum, meta)
       setShowExportModal(false)
       dialog.toast('Maternal report downloaded.', 'success')
@@ -609,6 +584,8 @@ const Dashboard = () => {
         </GlassButton>
         )}
       </div>
+
+      {loadingDashboardSections && <p role='status' className='text-sm text-white/65'>Loading dashboard sections?</p>}
 
       <Modal
         isOpen={showExportModal}
@@ -869,6 +846,7 @@ const Dashboard = () => {
           </table>
         </div>
         <Pagination
+          iconOnly
           page={activitiesPage}
           totalPages={totalActivityPages}
           onPageChange={setActivitiesPage}
@@ -1045,6 +1023,7 @@ const Dashboard = () => {
                 </p>
               )}
               <Pagination
+                iconOnly
                 page={safePriorityPage}
                 totalPages={totalPriorityPages}
                 onPageChange={setPriorityPage}
@@ -1140,123 +1119,51 @@ const Dashboard = () => {
           </div>
           <div className='flex items-center gap-2 w-full sm:w-auto'>
             <div className='flex w-full sm:w-auto bg-white/10 rounded-lg p-0.5 border border-white/20'>
-              {['monthly', 'quarterly', 'annual'].map(p => (
+              {Object.entries({ monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annually' }).map(([p, label]) => (
                 <button
                   key={p}
-                  disabled={aiLoading}
-                  onClick={() => {
-                    setAiPeriod(p)
-                    fetchAIRecommendation(p)
-                  }}
+                  disabled={aiLoading && aiPeriod === p}
+                  aria-pressed={aiPeriod === p}
+                  onClick={() => fetchAIRecommendation(p)}
                   className={`flex-1 sm:flex-none px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm transition-all ${
                     aiPeriod === p
                       ? 'bg-blue-500/30 text-blue-100 font-medium'
                       : 'text-white/75 hover:text-white'
                   }`}
                 >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {label}
                 </button>
               ))}
             </div>
           </div>
         </div>
         {aiLoading ? (
-          <SkeletonAIRecommendation isBHWWorker={isBHWWorker} />
+          <SkeletonAIRecommendation />
         ) : aiError ? (
           <p role='alert' className='mt-4 text-sm text-white/80'>{aiError}</p>
         ) : aiRecommendation ? (
           <div className='space-y-8 mt-6 break-words'>
-            <div className='grid grid-cols-1 gap-5'>
-              <div className='min-w-0 border-y border-white/10 py-6'>
-                <h3 className='text-base font-semibold text-white mb-2'>
-                  Key Findings
-                </h3>
-                {!aiRecommendation.keyFindings?.length && <p className='text-sm text-white/75'>No findings available for this report.</p>}
-                {(() => {
-                  const p = paginateAiList(aiRecommendation.keyFindings, aiFindingsPage)
-                  return (
-                    <>
-                    <div className='space-y-3'>
-                      {p.items.map((f, i) => (
-                        <div
-                          key={(p.safePage - 1) * aiListPerPage + i}
-                          className='p-4 sm:p-5 flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04]'
-                        >
-                          <span className='text-blue-200 shrink-0 font-semibold text-sm'>
-                            {(p.safePage - 1) * aiListPerPage + i + 1}.
-                          </span>
-                          <p className='text-white text-sm leading-relaxed'>{f}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <Pagination
-                      page={p.safePage}
-                      totalPages={p.totalPages}
-                      onPageChange={setAiFindingsPage}
-                      total={p.total}
-                      perPage={aiListPerPage}
-                    />
-                    </>
-                  )
-                })()}
-              </div>
-              {!isBHWWorker && (
-              <div className='min-w-0 border-y border-white/10 py-6'>
-                <h3 className='text-base font-semibold text-white mb-2'>
-                  Risk Areas
-                </h3>
-                {!aiRecommendation.riskAreas?.length && <p className='text-sm text-white/75'>No puroks have high or critical average risk in this report.</p>}
-                {(() => {
-                  const p = paginateAiList(aiRecommendation.riskAreas, aiRisksPage)
-                  return (
-                    <>
-                    <div className='space-y-3'>
-                      {p.items.map((r, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-xl border p-5 ${getAIPriorityCard(r.severity)}`}
-                    >
-                      <div className='flex flex-wrap items-start justify-between gap-2 mb-1.5'>
-                        <h4 className='text-white text-sm font-semibold leading-relaxed'>
-                          {typeof r.area === 'string' ? r.area : 'General'}
-                        </h4>
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            r.severity === 'Critical' || r.severity === 'high'
-                              ? 'bg-red-500/20 text-red-300'
-                              : r.severity === 'High' || r.severity === 'medium'
-                              ? 'bg-orange-500/20 text-orange-300'
-                              : r.severity === 'Moderate'
-                              ? 'bg-yellow-500/20 text-yellow-300'
-                              : 'bg-emerald-500/20 text-emerald-300'
-                          }`}
-                        >
-                          {r.severity} average risk
-                        </span>
-                      </div>
-                      <p className='text-white text-sm leading-relaxed'>{r.description}</p>
-                      <p className='text-sm text-white/90 leading-relaxed mt-2'>
-                        <span className='font-semibold'>Next step </span>{r.action}
-                      </p>
-                    </div>
-                      ))}
-                    </div>
-                    <Pagination
-                      page={p.safePage}
-                      totalPages={p.totalPages}
-                      onPageChange={setAiRisksPage}
-                      total={p.total}
-                      perPage={aiListPerPage}
-                    />
-                    </>
-                  )
-                })()}
-              </div>
-              )}
-            </div>
+            {aiRecommendation.summary && (
+              <section className='min-w-0'>
+                <h3 className='text-base font-semibold text-white mb-2'>Summary</h3>
+                {aiRecommendation.dateRange && (
+                  <p className='mb-3 text-sm text-white/75 leading-relaxed'>
+                    Reporting period {reportDate.format(new Date(aiRecommendation.dateRange.startDate))} to {reportDate.format(new Date(aiRecommendation.dateRange.endDate))}
+                  </p>
+                )}
+                <div className='rounded-xl border border-white/10 bg-white/[0.04] p-5'>
+                  <p className='text-sm text-white/85 leading-relaxed'>{aiRecommendation.periodSummary || aiRecommendation.summary}</p>
+                  {aiRecommendation.periodResidentSummary && (
+                    <p className='mt-3 text-sm text-white/75 leading-relaxed'>
+                      <span className='font-semibold'>Residents reached this period. </span>{aiRecommendation.periodResidentSummary}
+                    </p>
+                  )}
+                </div>
+              </section>
+            )}
             <section className='min-w-0 border-y border-white/10 py-6'>
               <h3 className='text-base font-semibold text-white mb-2'>
-                Health Intervention Recommendations
+                Health Interventions
               </h3>
               <p className='text-sm text-white/75 leading-relaxed mb-4'>
                 Practical next steps based on identified conditions, risk factors, and community needs.
@@ -1296,6 +1203,7 @@ const Dashboard = () => {
                     <p className='text-white text-sm leading-relaxed mb-3'>
                       {r.action}
                     </p>
+                    {r.evidence && <p className='text-sm text-white/75 leading-relaxed'>{r.evidence}</p>}
                     <dl className='mt-auto border-t border-white/10 pt-3 space-y-2'>
                       <div><dt className='text-xs font-semibold uppercase tracking-wider text-white/70 leading-relaxed'>Target group</dt><dd className='text-sm text-white/90 leading-relaxed'>{r.targetGroup}</dd></div>
                       <div><dt className='text-xs font-semibold uppercase tracking-wider text-white/70 leading-relaxed'>Suggested timing</dt><dd className='text-sm text-white/90 leading-relaxed'>{r.timeline}</dd></div>
@@ -1305,6 +1213,7 @@ const Dashboard = () => {
                     ))}
                   </div>
                   <Pagination
+                    iconOnly
                     page={p.safePage}
                     totalPages={p.totalPages}
                     onPageChange={setAiActionsPage}
@@ -1317,7 +1226,7 @@ const Dashboard = () => {
             </section>
             <section className='min-w-0 border-y border-white/10 py-6'>
               <h3 className='text-base font-semibold text-white mb-2'>
-                Health Program Recommendations
+                Health Programs
               </h3>
               <p className='text-sm text-white/75 leading-relaxed mb-4'>
                 Community programs and activities for prevalent health concerns and priority groups.
@@ -1340,6 +1249,7 @@ const Dashboard = () => {
                           </div>
                           <p className='text-sm text-white/90 leading-relaxed mb-2.5'><span className='text-xs font-semibold uppercase tracking-wider text-white/70'>Target group: </span>{pr.targetGroup}</p>
                           {pr.objective && <p className='text-sm text-white/90 leading-relaxed mb-2.5'><span className='text-xs font-semibold uppercase tracking-wider text-white/70'>Goal: </span>{pr.objective}</p>}
+                          {pr.evidence && <p className='text-sm text-white/75 leading-relaxed mb-2.5'>{pr.evidence}</p>}
                           {pr.activities?.length > 0 && (
                             <div className='mb-3'>
                               <p className='text-xs font-semibold uppercase tracking-wider text-white/70 leading-relaxed mb-1.5'>Activities</p>
@@ -1355,135 +1265,11 @@ const Dashboard = () => {
                         </article>
                       ))}
                     </div>
-                    <Pagination page={p.safePage} totalPages={p.totalPages} onPageChange={setAiProgramsPage} total={p.total} perPage={aiListPerPage} />
+                    <Pagination iconOnly page={p.safePage} totalPages={p.totalPages} onPageChange={setAiProgramsPage} total={p.total} perPage={aiListPerPage} />
                   </>
                 )
               })()}
             </section>
-            {aiRecommendation.priorityResidents?.recommendations?.length > 0 && (
-              <div className='min-w-0 border-y border-white/10 py-6'>
-                <h3 className='text-base font-semibold text-white mb-2'>
-                  Priority Residents
-                </h3>
-                <p className='text-sm text-white/75 leading-relaxed mb-4'>
-                  Follow up with residents who have critical or high recorded risk.
-                </p>
-                {(() => {
-                  const p = paginateAiList(aiRecommendation.priorityResidents.recommendations, aiPriorityPage)
-                  return (
-                    <>
-                    <div className='grid grid-cols-1 gap-5'>
-                      {p.items.map(r => (
-                        <div
-                          key={r.residentId}
-                          className={`min-w-0 rounded-xl border p-5 ${getAIPriorityCard(r.urgency)}`}
-                        >
-                          <div className='flex items-center justify-between gap-2 flex-wrap mb-1'>
-                            <h4 className='text-white text-sm font-semibold leading-relaxed'>
-                              {r.resident}
-                            </h4>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                r.urgency === 'immediate'
-                                  ? 'bg-red-500/20 text-red-300'
-                                  : r.urgency === 'routine'
-                                  ? 'bg-emerald-500/20 text-emerald-300'
-                                  : 'bg-orange-500/20 text-orange-300'
-                              }`}
-                            >
-                              {r.urgency === 'immediate' ? 'CONTACT TODAY' : r.urgency?.toUpperCase() || 'PRIORITY'}
-                            </span>
-                          </div>
-                          <p className='text-xs text-white/85 leading-relaxed mb-2.5'>
-                            {[r.age != null && r.age !== '' ? `${r.age}y old` : null, r.purok, r.riskLevel, r.missedCount > 0 ? `${r.missedCount} missed` : null, r.riskScore != null ? `Score ${r.riskScore}` : null].filter(Boolean).join(' • ')}
-                          </p>
-                          {r.conditions?.length > 0 && (
-                            <div className='flex flex-wrap gap-1.5 mb-2.5'>
-                              {r.conditions.map((c, j) => (
-                                <span key={j} className='inline-flex items-center gap-1.5 text-xs text-white/85 bg-white/[0.05] border border-white/10 rounded-full px-2 py-0.5'>
-                                  {c}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <p className='text-white/90 text-sm leading-relaxed'>
-                            <span className='text-xs font-semibold uppercase tracking-wider text-white/70'>Next step: </span>
-                            {r.intervention}
-                          </p>
-                          {r.reason && (
-                            <p className='text-sm text-white/75 leading-relaxed mt-2'>Why: {r.reason}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <Pagination
-                      page={p.safePage}
-                      totalPages={p.totalPages}
-                      onPageChange={setAiPriorityPage}
-                      total={p.total}
-                      perPage={aiListPerPage}
-                    />
-                    </>
-                  )
-                })()}
-              </div>
-            )}
-            {!isBHWWorker && aiRecommendation.purokPriority?.rankings?.length > 0 && (
-              <div className='min-w-0 border-y border-white/10 py-6'>
-                <h3 className='text-base font-semibold text-white mb-2'>
-                  Priority Puroks
-                </h3>
-                <p className='text-sm text-white/75 mb-4'>Areas to coordinate first, ranked by recorded risk.</p>
-                {(() => {
-                  const p = paginateAiList(aiRecommendation.purokPriority.rankings, aiPurokRankPage)
-                  return (
-                    <>
-                    <div className='grid grid-cols-1 gap-5'>
-                      {p.items.map((rk, i) => (
-                        <div
-                          key={(p.safePage - 1) * aiListPerPage + i}
-                          className={`min-w-0 rounded-xl border p-5 ${getAIPriorityCard(rk.priority)}`}
-                        >
-                          <div className='flex items-center justify-between gap-2 flex-wrap mb-1.5'>
-                            <h4 className='text-white text-sm font-semibold leading-relaxed'>
-                              <span className='text-blue-200 font-bold mr-2'>#{rk.rank ?? ((p.safePage - 1) * aiListPerPage + i + 1)}</span>
-                              {typeof rk.purok === 'string' ? rk.purok : 'Unknown'}
-                            </h4>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                rk.priority === 'Critical'
-                                  ? 'bg-red-500/20 text-red-300'
-                                  : rk.priority === 'High'
-                                  ? 'bg-orange-500/20 text-orange-300'
-                                  : rk.priority === 'Low'
-                                  ? 'bg-emerald-500/20 text-emerald-300'
-                                  : 'bg-yellow-500/20 text-yellow-300'
-                              }`}
-                            >
-                              {String(rk.priority ?? 'Low').toUpperCase()} PRIORITY
-                            </span>
-                          </div>
-                          <p className='text-xs text-white/85 leading-relaxed mb-2.5'>
-                              {rk.critical || 0} critical-risk • {rk.high || 0} high-risk • {rk.totalResidents || 0} resident{(rk.totalResidents ?? 0) !== 1 ? 's' : ''}
-                          </p>
-                          {rk.interventions?.map((s, j) => (
-                            <p key={j} className='text-sm text-white/90 leading-relaxed'><span className='text-xs font-semibold uppercase tracking-wider text-white/70'>Coordination: </span>{s}</p>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                    <Pagination
-                      page={p.safePage}
-                      totalPages={p.totalPages}
-                      onPageChange={setAiPurokRankPage}
-                      total={p.total}
-                      perPage={aiListPerPage}
-                    />
-                    </>
-                  )
-                })()}
-              </div>
-            )}
           </div>
         ) : (
           <div className='text-center py-12 mt-4'>
@@ -1598,6 +1384,7 @@ const Dashboard = () => {
               )}
             </div>
             <Pagination
+              iconOnly
               page={criticalPage}
               totalPages={totalCriticalPages}
               onPageChange={setCriticalPage}
@@ -1659,6 +1446,7 @@ const Dashboard = () => {
               )}
             </div>
             <Pagination
+              iconOnly
               page={highRiskPage}
               totalPages={totalHighRiskPages}
               onPageChange={setHighRiskPage}
@@ -1714,11 +1502,13 @@ const Dashboard = () => {
               ))}
             </div>
             <Pagination
+              iconOnly
               page={missedPage}
               totalPages={totalMissedPages}
               onPageChange={setMissedPage}
               total={missedConsultations.length}
               perPage={missedPerPage}
+              alignControlsRight
             />
           </>
         ) : (
@@ -1742,7 +1532,9 @@ const Dashboard = () => {
             className="w-full"
             options={[
               { value: 'all', label: 'All Puroks' },
-              ...[...purokRiskData].sort((a, b) => a.purokName?.localeCompare(b.purokName)).map(p => ({
+              ...[...purokRiskData].sort((a, b) =>
+                (a.purokName || '').localeCompare(b.purokName || '', undefined, { numeric: true })
+              ).map(p => ({
                 value: p.purokName,
                 label: p.purokName
               }))
@@ -1807,6 +1599,7 @@ const Dashboard = () => {
               })}
             </div>
             <Pagination
+              iconOnly
               page={safeCondPage}
               totalPages={totalCondPages}
               onPageChange={setConditionsPage}

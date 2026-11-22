@@ -1,21 +1,22 @@
-// App.jsx
+import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext.jsx'
 import Layout from './components/Layout.jsx'
 import Login from './pages/Login.jsx'
-import Dashboard from './pages/Dashboard.jsx'
-import Residents from './pages/Residents.jsx'
-import BHW from './pages/BHW.jsx'
-import BHWDetail from './pages/BHWDetail.jsx'
-import BHWForm from './pages/BHWForm.jsx'
-import Schedules from './pages/Schedules.jsx'
-import Purok from './pages/Purok.jsx'
-import Medicines from './pages/Medicines.jsx'
-import BHWHome from './pages/bhw-worker/BHWHome.jsx'
-import MySchedules from './pages/bhw-worker/MySchedules.jsx'
-import MyResidents from './pages/bhw-worker/MyResidents.jsx'
-import MyAssignment from './pages/bhw-worker/MyAssignment.jsx'
 import gumamelaBg from './assets/gumamela.jpg'
+
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'))
+const Residents = lazy(() => import('./pages/Residents.jsx'))
+const BHW = lazy(() => import('./pages/BHW.jsx'))
+const BHWDetail = lazy(() => import('./pages/BHWDetail.jsx'))
+const BHWForm = lazy(() => import('./pages/BHWForm.jsx'))
+const Schedules = lazy(() => import('./pages/Schedules.jsx'))
+const Purok = lazy(() => import('./pages/Purok.jsx'))
+const Medicines = lazy(() => import('./pages/Medicines.jsx'))
+const BHWHome = lazy(() => import('./pages/bhw-worker/BHWHome.jsx'))
+const MySchedules = lazy(() => import('./pages/bhw-worker/MySchedules.jsx'))
+const MyResidents = lazy(() => import('./pages/bhw-worker/MyResidents.jsx'))
+const MyAssignment = lazy(() => import('./pages/bhw-worker/MyAssignment.jsx'))
 
 // BHW Workers (role === 'BHW Worker') get the scoped portal only.
 // BHW Admin + Administrator keep the full admin interface.

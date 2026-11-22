@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo-576.png'
 
 const Login = () => {
   const [email, setEmail] = useState('')

@@ -26,7 +26,7 @@ import Modal from './Modal'
 import { dialog } from '../context/DialogContext'
 import Pagination from './Pagination'
 import { SkeletonNotificationList } from './Skeleton'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo-96.png'
 
 const Header = () => {
   const { user, logout } = useAuth()

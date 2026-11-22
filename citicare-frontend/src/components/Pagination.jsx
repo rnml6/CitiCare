@@ -24,7 +24,8 @@ const Pagination = ({
   hidePageIndicator = false,
   hidePageIndicatorOnMobile = true,
   iconOnly = false,
-  showSummary = true
+  showSummary = true,
+  alignControlsRight = false
 }) => {
   if (totalPages <= 1 && !alwaysShow) return null
 
@@ -49,7 +50,7 @@ const Pagination = ({
       {showing && (
         <span className={`text-xs text-white/50 ${hidePageIndicatorOnMobile ? 'hidden sm:inline' : ''}`}>{showing}</span>
       )}
-      <div className='flex flex-wrap items-center gap-1.5'>
+      <div className={`flex flex-wrap items-center gap-1.5 ${alignControlsRight ? 'ml-auto justify-end' : ''}`}>
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}

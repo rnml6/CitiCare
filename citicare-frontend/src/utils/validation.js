@@ -1,7 +1,8 @@
 // Shared, framework-agnostic validation helpers used by forms and tests.
 // These mirror the server-side rules; the server remains the source of truth.
 
-export const GENDERS = ['Male', 'Female', 'Other']
+export const GENDERS = ['Male', 'Female']
+export const GENDER_OPTIONS = GENDERS.map(value => ({ value, label: value }))
 export const CIVIL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated']
 export const FOCUS_GROUPS = ['pregnant', 'senior', 'infant', 'pwd', 'withCondition']
 

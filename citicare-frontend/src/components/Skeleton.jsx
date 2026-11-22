@@ -1356,43 +1356,15 @@ export const SkeletonActivityCards = ({ count = 3 }) => {
   )
 }
 
-// Mirrors the AI Health Recommendations layout: Key Findings + Risk Areas,
-// Health Intervention Recommendations (single column), Health Program
-// Recommendations, Priority Residents and Priority Puroks — each section
-// with its cards, meta rows and pagination footer.
-export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
+export const SkeletonAIRecommendation = () => {
   return (
     <div className='space-y-8 mt-6'>
-      <div className='grid grid-cols-1 gap-5'>
-        {/* Key Findings — numbered rows */}
-        <div className='min-w-0 border-y border-white/10 py-6 space-y-3'>
-          <Skeleton className='h-4 w-32' />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className='rounded-xl border border-white/10 bg-white/[0.04] p-4 sm:p-5 flex items-start gap-3'>
-              <Skeleton className='h-4 w-5 shrink-0' />
-              <div className='flex-1 space-y-2 min-w-0'>
-                <Skeleton className='h-3 w-full' />
-                <Skeleton className='h-3 w-4/5' />
-              </div>
-            </div>
-          ))}
-          <SkeletonPagination />
+      <div className='space-y-3'>
+        <Skeleton className='h-4 w-24' />
+        <div className='space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-5'>
+          <Skeleton className='h-3 w-full' />
+          <Skeleton className='h-3 w-4/5' />
         </div>
-        {/* Risk Areas — title + severity badge + description */}
-        {!isBHWWorker && <div className='min-w-0 border-y border-white/10 py-6 space-y-3'>
-          <Skeleton className='h-4 w-32' />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className='rounded-xl border border-white/10 bg-white/[0.04] p-5 space-y-2'>
-              <div className='flex items-start justify-between gap-2'>
-                <Skeleton className='h-4 w-1/3' />
-                <Skeleton className='h-5 w-16 rounded' />
-              </div>
-              <Skeleton className='h-3 w-full' />
-              <Skeleton className='h-3 w-4/5' />
-            </div>
-          ))}
-          <SkeletonPagination />
-        </div>}
       </div>
       {/* Health Intervention Recommendations — header, action, meta rows */}
       <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
@@ -1452,52 +1424,6 @@ export const SkeletonAIRecommendation = ({ isBHWWorker = false }) => {
         </div>
         <SkeletonPagination />
       </div>
-      {/* Priority Residents — name + urgency, meta, condition chips, next step */}
-      <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
-        <Skeleton className='h-4 w-44' />
-        <Skeleton className='h-3 w-4/5' />
-        <div className='grid grid-cols-1 gap-5'>
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className='min-w-0 border border-white/10 bg-white/[0.04] rounded-xl p-5 space-y-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <Skeleton className='h-4 w-32' />
-                <Skeleton className='h-5 w-24 rounded' />
-              </div>
-              <Skeleton className='h-3 w-3/5' />
-              <div className='flex flex-wrap gap-1.5'>
-                <Skeleton className='h-5 w-20 rounded-full' />
-                <Skeleton className='h-5 w-24 rounded-full' />
-              </div>
-              <div className='space-y-2'>
-                <Skeleton className='h-3 w-full' />
-                <Skeleton className='h-3 w-5/6' />
-              </div>
-            </div>
-          ))}
-        </div>
-        <SkeletonPagination />
-      </div>
-      {/* Priority Puroks — rank + name + badge, counts, coordination line */}
-      {!isBHWWorker && <div className='min-w-0 border-y border-white/10 py-6 space-y-4'>
-        <Skeleton className='h-4 w-40' />
-        <Skeleton className='h-3 w-3/5' />
-        <div className='grid grid-cols-1 gap-5'>
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className='min-w-0 border border-white/10 bg-white/[0.04] rounded-xl p-5 space-y-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <Skeleton className='h-4 w-28' />
-                <Skeleton className='h-5 w-20 rounded' />
-              </div>
-              <Skeleton className='h-3 w-1/2' />
-              <div className='space-y-2'>
-                <Skeleton className='h-3 w-full' />
-                <Skeleton className='h-3 w-4/5' />
-              </div>
-            </div>
-          ))}
-        </div>
-        <SkeletonPagination />
-      </div>}
     </div>
   )
 }

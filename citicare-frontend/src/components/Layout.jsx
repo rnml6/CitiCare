@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -11,7 +12,9 @@ const Layout = () => {
         <Header />
         <main className="responsive-main flex-1 overflow-y-auto p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-6">
           <div className="max-w-7xl mx-auto">
-            <Outlet />
+            <Suspense fallback={null}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

@@ -17,12 +17,12 @@ import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import StatCard from '../../components/StatCard'
 import PriorityResidentsSidebar from '../../components/PriorityResidentsSidebar'
-import ResidentDetail from '../ResidentDetail'
+import ResidentDetail from '../../components/LazyResidentDetail'
 import { SkeletonMyResidentsPage } from '../../components/Skeleton'
 import { getRiskColor, formatAge, formatAgeLong, sortResidentsAlphabetically } from '../../utils/helpers'
 import { dialog } from '../../context/DialogContext'
 import { confirmCreate, confirmUpdate } from '../../utils/crudConfirm'
-import { sanitizePhoneInput, blockPhoneKeys } from '../../utils/validation'
+import { GENDERS, GENDER_OPTIONS, sanitizePhoneInput, blockPhoneKeys } from '../../utils/validation'
 import { focusFirstError } from '../../utils/focusInvalidField'
 
 const FOCUS_LABELS = { pregnant: 'Pregnant', senior: 'Senior Citizen', infant: 'Infants' }
@@ -190,6 +190,7 @@ const MyResidents = () => {
     const nextErrors = {}
     if (!addForm.name) nextErrors.name = 'Full name is required.'
     if (!addForm.gender) nextErrors.gender = 'Gender is required.'
+    else if (!GENDERS.includes(addForm.gender)) nextErrors.gender = 'Select a valid gender.'
     if (!addForm.dateOfBirth) nextErrors.dateOfBirth = 'Date of birth is required.'
     if ((addForm.focusGroups || []).includes('pwd') && !addForm.disabilityType?.trim()) {
       nextErrors.disabilityType = 'Please specify the disability for PWD residents.'
@@ -336,6 +337,7 @@ const MyResidents = () => {
     const nextErrors = {}
     if (!editForm.name) nextErrors.name = 'Full name is required.'
     if (!editForm.gender) nextErrors.gender = 'Gender is required.'
+    else if (!GENDERS.includes(editForm.gender)) nextErrors.gender = 'Select a valid gender.'
     if (!editForm.dateOfBirth) nextErrors.dateOfBirth = 'Date of birth is required.'
     if ((editForm.focusGroups || []).includes('pwd') && !editForm.disabilityType?.trim()) {
       nextErrors.disabilityType = 'Please specify the disability for PWD residents.'
@@ -674,7 +676,7 @@ const MyResidents = () => {
             </div>
           </div>
           <div className='grid grid-cols-2 gap-3'>
-            <GlassSelect label='Gender *' name='gender' error={addErrors.gender} value={addForm.gender} onChange={v => handleAddFormChange('gender', v)} required allowCustom placeholder='Select gender' options={[{ value: 'Female', label: 'Female' }, { value: 'Male', label: 'Male' }, { value: 'Other', label: 'Other' }]} />
+            <GlassSelect label='Gender *' name='gender' error={addErrors.gender} value={addForm.gender} onChange={v => handleAddFormChange('gender', v)} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
             <GlassSelect label='Civil Status' value={addForm.civilStatus} onChange={v => handleAddFormChange('civilStatus', v)} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={addForm.contactNumber} onChange={e => handleAddFormChange('contactNumber', e.target.value)} placeholder='Enter contact number' />
@@ -739,7 +741,7 @@ const MyResidents = () => {
             <div className='space-y-1.5'><label className='block text-sm text-blue-200'>Age</label><input type='text' value={editAgeDisplay} readOnly className='glass-input text-white/75 cursor-not-allowed' /></div>
           </div>
           <div className='grid grid-cols-2 gap-3'>
-            <GlassSelect label='Gender *' name='gender' error={editErrors.gender} value={editForm.gender} onChange={v => updateEditField('gender', v)} required allowCustom placeholder='Select gender' options={[{ value: 'Female', label: 'Female' }, { value: 'Male', label: 'Male' }, { value: 'Other', label: 'Other' }]} />
+            <GlassSelect label='Gender *' name='gender' error={editErrors.gender} value={editForm.gender} onChange={v => updateEditField('gender', v)} required allowCustom={false} placeholder='Select gender' options={GENDER_OPTIONS} />
             <GlassSelect label='Civil Status' value={editForm.civilStatus} onChange={v => setEditForm({ ...editForm, civilStatus: v })} options={[{ value: 'Married', label: 'Married' }, { value: 'Separated', label: 'Separated' }, { value: 'Single', label: 'Single' }, { value: 'Widowed', label: 'Widowed' }]} />
           </div>
           <GlassInput label='Contact Number' type='tel' inputMode='tel' maxLength={11} onKeyDown={blockPhoneKeys} value={editForm.contactNumber} onChange={e => updateEditField('contactNumber', sanitizePhoneInput(e.target.value))} placeholder='Enter contact number' />
